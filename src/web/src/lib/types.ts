@@ -55,6 +55,8 @@ export interface CurrentSongInfo {
   nextSong: Song | null
   songNumber: number
   totalSongs: number
+  actualSongNumber: number
+  actualTotalSongs: number
   progress: number
   isComplete: boolean
   wins: BingoWins | null

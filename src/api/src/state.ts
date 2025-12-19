@@ -154,11 +154,42 @@ class GameStateManager {
       };
     }
 
+    // Calculate actual song counts (battles with multiple songs count each song)
+    const getSongCount = (song: Song, battleChoice?: 'A' | 'B'): number => {
+      if (song.type === 'fixed') {
+        return 1;
+      }
+      // For battles, count the songs in the selected option, or default to optionA length
+      if (battleChoice) {
+        return battleChoice === 'A' ? song.optionA.length : song.optionB.length;
+      }
+      // If no choice made yet, use optionA length as default (both options should have same count)
+      return song.optionA.length;
+    };
+
+    // Calculate actual total songs (sum of all songs across all entries)
+    let actualTotalSongs = 0;
+    for (let i = 0; i < normalizedSongs.length; i++) {
+      const song = normalizedSongs[i];
+      actualTotalSongs += getSongCount(song, this.battleChoices[i]);
+    }
+
+    // Calculate actual song number (sum of songs up to and including current)
+    let actualSongNumber = 0;
+    for (let i = 0; i <= this.currentIndex; i++) {
+      const song = normalizedSongs[i];
+      if (song) {
+        actualSongNumber += getSongCount(song, this.battleChoices[i]);
+      }
+    }
+
     return {
       currentSong: currentWithSelection,
       nextSong,
       songNumber: this.currentIndex + 1,
       totalSongs: this.songs.length,
+      actualSongNumber,
+      actualTotalSongs,
       progress: this.songs.length > 0 ? ((this.currentIndex + 1) / this.songs.length) * 100 : 0,
       isComplete: this.currentIndex === this.songs.length - 1,
       wins: winsPerSong[this.currentIndex] ?? null,

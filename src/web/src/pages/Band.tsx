@@ -204,7 +204,7 @@ export function Band() {
 		)
 	}
 
-	const { currentSong, nextSong, songNumber, totalSongs, progress, isComplete, wins } = currentInfo
+	const { currentSong, nextSong, songNumber, totalSongs, actualSongNumber, actualTotalSongs, progress, isComplete, wins } = currentInfo
 	const currentIndex = songNumber - 1
 
 	const revealedSongs = new Set(winningCards?.revealedSongs ?? [])
@@ -238,7 +238,7 @@ export function Band() {
 					<div className="space-y-2">
 						<div className="flex items-center justify-between text-sm">
 							<span className="text-muted-foreground">
-								Song {songNumber} of {totalSongs}
+								Song {actualSongNumber} of {actualTotalSongs}
 							</span>
 							<span className="text-muted-foreground">{Math.round(progress)}%</span>
 						</div>
