@@ -19,6 +19,7 @@
   color utility to any element that depends on these defaults.
 */
 @layer base {
+
   *,
   ::after,
   ::before,
@@ -188,9 +189,15 @@
 .song-battle-vs {
   font-size: 36px;
 }
+
 .audience-song-battle-title {
- font-size: 120px; 
+  font-size: 130px;
 }
+
 .audience-song-title {
- font-size: 150px; 
+  font-size: 160px;
+}
+
+.battle-list .audience-song-title:not(:first-child) {
+  margin-top: 130px;
 }

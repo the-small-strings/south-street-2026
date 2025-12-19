@@ -196,7 +196,7 @@ export function Band() {
 
 	return (
 		<div className="min-h-screen bg-background text-foreground p-8">
-			<div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_300px] gap-6">
+			<div className="mx-auto grid lg:grid-cols-[3fr_1fr] gap-6">
 				<div className="space-y-6">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-3">
@@ -440,7 +440,7 @@ export function Band() {
 														: 'bg-secondary/30 border-border'
 													}`}
 											>
-												<div className="flex items-start justify-between gap-2">
+												<div className="xflex items-start justify-between gap-2">
 													<div className="flex-1 min-w-0">
 														<div className="text-sm font-medium truncate">
 															{song.name}

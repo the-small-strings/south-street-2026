@@ -88,7 +88,7 @@ function FixedSongDisplay({ name }: { name: string }) {
       transition={{ duration: 0.5, ease: 'easeOut' }}
       className="h-full w-full bg-black flex items-center justify-center"
     >
-      <div className="text-center w-full max-w-6xl px-8">
+      <div className="text-center w-full px-8">
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -121,12 +121,12 @@ function BattleSongDisplay({ battle }: { battle: BattleSong }) {
           className="bg-orange-500 flex items-center justify-center overflow-hidden"
         >
           {isOptionA && (
-            <div className="text-center w-full max-w-6xl px-8">
+            <div className="text-center w-full px-8">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="space-y-6"
+                className="space-y-6 battle-list"
               >
                 {winningSongs.map((song, idx) => (
                   <motion.h1
@@ -152,12 +152,12 @@ function BattleSongDisplay({ battle }: { battle: BattleSong }) {
           className="bg-black flex items-center justify-center overflow-hidden"
         >
           {!isOptionA && (
-            <div className="text-center w-full max-w-6xl px-8">
+            <div className="text-center w-full px-8">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="space-y-6"
+                className="space-y-6 battle-list"
               >
                 {winningSongs.map((song, idx) => (
                   <motion.h1
