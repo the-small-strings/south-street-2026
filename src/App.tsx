@@ -217,16 +217,16 @@ function App() {
                     <Card 
                       className={`p-8 cursor-pointer transition-all duration-200 relative ${
                         _battleChoices[_currentIndex] === 'A' 
-                          ? 'ring-4 ring-[var(--battle-orange)] bg-[var(--battle-orange)]/10' 
+                          ? 'ring-4 ring-[var(--battle-blue)] bg-[var(--battle-blue)]/10' 
                           : _battleChoices[_currentIndex] === 'B'
                           ? 'opacity-40'
-                          : 'hover:bg-[var(--battle-orange)]/5'
+                          : 'hover:bg-[var(--battle-blue)]/5'
                       }`}
                       style={{
-                        borderColor: _battleChoices[_currentIndex] === 'A' ? 'var(--battle-orange)' : undefined
+                        borderColor: _battleChoices[_currentIndex] === 'A' ? 'var(--battle-blue)' : undefined
                       }}
                     >
-                      <div className="text-sm uppercase tracking-wide mb-3" style={{ color: 'var(--battle-orange)' }}>
+                      <div className="text-sm uppercase tracking-wide mb-3" style={{ color: 'var(--battle-blue)' }}>
                         Option B (Black)
                       </div>
                       <h3 className="text-4xl font-bold mb-4">{currentSong.optionA}</h3>
@@ -241,7 +241,7 @@ function App() {
                           animate={{ scale: 1 }}
                           className="absolute top-4 right-4"
                         >
-                          <Trophy size={32} weight="fill" style={{ color: 'var(--battle-orange)' }} />
+                          <Trophy size={32} weight="fill" style={{ color: 'var(--battle-blue)' }} />
                         </motion.div>
                       )}
                     </Card>
@@ -260,16 +260,16 @@ function App() {
                     <Card 
                       className={`p-8 cursor-pointer transition-all duration-200 relative ${
                         _battleChoices[_currentIndex] === 'B' 
-                          ? 'ring-4 ring-[var(--battle-blue)] bg-[var(--battle-blue)]/10' 
+                          ? 'ring-4 ring-[var(--battle-orange)] bg-[var(--battle-orange)]/10' 
                           : _battleChoices[_currentIndex] === 'A'
                           ? 'opacity-40'
-                          : 'hover:bg-[var(--battle-blue)]/5'
+                          : 'hover:bg-[var(--battle-orange)]/5'
                       }`}
                       style={{
-                        borderColor: _battleChoices[_currentIndex] === 'B' ? 'var(--battle-blue)' : undefined
+                        borderColor: _battleChoices[_currentIndex] === 'B' ? 'var(--battle-orange)' : undefined
                       }}
                     >
-                      <div className="text-sm uppercase tracking-wide mb-3" style={{ color: 'var(--battle-blue)' }}>
+                      <div className="text-sm uppercase tracking-wide mb-3" style={{ color: 'var(--battle-orange)' }}>
                         Option O (Orange)
                       </div>
                       <h3 className="text-4xl font-bold mb-4">{currentSong.optionB}</h3>
@@ -284,7 +284,7 @@ function App() {
                           animate={{ scale: 1 }}
                           className="absolute top-4 right-4"
                         >
-                          <Trophy size={32} weight="fill" style={{ color: 'var(--battle-blue)' }} />
+                          <Trophy size={32} weight="fill" style={{ color: 'var(--battle-orange)' }} />
                         </motion.div>
                       )}
                     </Card>
