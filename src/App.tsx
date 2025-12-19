@@ -53,10 +53,12 @@ function App() {
         e.preventDefault()
         if (currentSong?.type === 'fixed' && _currentIndex < _songs.length - 1) {
           setCurrentIndex(_currentIndex + 1)
+        } else if (currentSong?.type === 'battle' && _battleChoices[_currentIndex] && _currentIndex < _songs.length - 1) {
+          setCurrentIndex(_currentIndex + 1)
         }
       } else if (e.key === 'b' || e.key === 'B') {
         e.preventDefault()
-        if (currentSong?.type === 'battle' && !_battleChoices[_currentIndex]) {
+        if (currentSong?.type === 'battle') {
           setBattleChoices((prev) => ({ ...(prev ?? {}), [_currentIndex]: 'A' }))
           if (_currentIndex < _songs.length - 1) {
             setTimeout(() => setCurrentIndex(_currentIndex + 1), 300)
@@ -64,7 +66,7 @@ function App() {
         }
       } else if (e.key === 'o' || e.key === 'O') {
         e.preventDefault()
-        if (currentSong?.type === 'battle' && !_battleChoices[_currentIndex]) {
+        if (currentSong?.type === 'battle') {
           setBattleChoices((prev) => ({ ...(prev ?? {}), [_currentIndex]: 'B' }))
           if (_currentIndex < _songs.length - 1) {
             setTimeout(() => setCurrentIndex(_currentIndex + 1), 300)
@@ -203,14 +205,12 @@ function App() {
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <motion.div
-                    whileHover={!_battleChoices[_currentIndex] ? { scale: 1.02 } : {}}
-                    whileTap={!_battleChoices[_currentIndex] ? { scale: 0.98 } : {}}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => {
-                      if (!_battleChoices[_currentIndex]) {
-                        setBattleChoices((prev) => ({ ...(prev ?? {}), [_currentIndex]: 'A' }))
-                        if (_currentIndex < _songs.length - 1) {
-                          setTimeout(() => setCurrentIndex(_currentIndex + 1), 300)
-                        }
+                      setBattleChoices((prev) => ({ ...(prev ?? {}), [_currentIndex]: 'A' }))
+                      if (_currentIndex < _songs.length - 1) {
+                        setTimeout(() => setCurrentIndex(_currentIndex + 1), 300)
                       }
                     }}
                   >
@@ -230,11 +230,11 @@ function App() {
                         Option B (Black)
                       </div>
                       <h3 className="text-4xl font-bold mb-4">{currentSong.optionA}</h3>
-                      {!_battleChoices[_currentIndex] && (
-                        <div className="text-muted-foreground text-sm">
-                          Press <kbd className="px-2 py-1 bg-muted rounded">B</kbd>
-                        </div>
-                      )}
+                      <div className="text-muted-foreground text-sm">
+                        Press <kbd className="px-2 py-1 bg-muted rounded">B</kbd>
+                        {_battleChoices[_currentIndex] && ' or '}
+                        {_battleChoices[_currentIndex] && <kbd className="px-2 py-1 bg-muted rounded">Space</kbd>}
+                      </div>
                       {_battleChoices[_currentIndex] === 'A' && (
                         <motion.div
                           initial={{ scale: 0 }}
@@ -248,14 +248,12 @@ function App() {
                   </motion.div>
 
                   <motion.div
-                    whileHover={!_battleChoices[_currentIndex] ? { scale: 1.02 } : {}}
-                    whileTap={!_battleChoices[_currentIndex] ? { scale: 0.98 } : {}}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => {
-                      if (!_battleChoices[_currentIndex]) {
-                        setBattleChoices((prev) => ({ ...(prev ?? {}), [_currentIndex]: 'B' }))
-                        if (_currentIndex < _songs.length - 1) {
-                          setTimeout(() => setCurrentIndex(_currentIndex + 1), 300)
-                        }
+                      setBattleChoices((prev) => ({ ...(prev ?? {}), [_currentIndex]: 'B' }))
+                      if (_currentIndex < _songs.length - 1) {
+                        setTimeout(() => setCurrentIndex(_currentIndex + 1), 300)
                       }
                     }}
                   >
@@ -275,11 +273,11 @@ function App() {
                         Option O (Orange)
                       </div>
                       <h3 className="text-4xl font-bold mb-4">{currentSong.optionB}</h3>
-                      {!_battleChoices[_currentIndex] && (
-                        <div className="text-muted-foreground text-sm">
-                          Press <kbd className="px-2 py-1 bg-muted rounded">O</kbd>
-                        </div>
-                      )}
+                      <div className="text-muted-foreground text-sm">
+                        Press <kbd className="px-2 py-1 bg-muted rounded">O</kbd>
+                        {_battleChoices[_currentIndex] && ' or '}
+                        {_battleChoices[_currentIndex] && <kbd className="px-2 py-1 bg-muted rounded">Space</kbd>}
+                      </div>
                       {_battleChoices[_currentIndex] === 'B' && (
                         <motion.div
                           initial={{ scale: 0 }}
