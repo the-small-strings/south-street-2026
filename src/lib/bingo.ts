@@ -20,7 +20,9 @@ export function calculateBingoWins(
       revealedSongs.add(song.name)
     } else if (song.type === 'battle' && song.selected) {
       const selectedOptions = song.selected === 'A' ? song.optionA : song.optionB
-      selectedOptions.forEach(songName => revealedSongs.add(songName))
+      if (Array.isArray(selectedOptions)) {
+        selectedOptions.forEach(songName => revealedSongs.add(songName))
+      }
     }
 
     const newLineWinners: number[] = []

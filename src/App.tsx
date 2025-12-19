@@ -104,7 +104,9 @@ function App() {
         revealed.add(song.name)
       } else if (song.type === 'battle' && song.selected) {
         const selectedOptions = song.selected === 'A' ? song.optionA : song.optionB
-        selectedOptions.forEach(songName => revealed.add(songName))
+        if (Array.isArray(selectedOptions)) {
+          selectedOptions.forEach(songName => revealed.add(songName))
+        }
       }
     }
     return revealed
