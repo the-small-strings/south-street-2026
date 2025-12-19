@@ -230,11 +230,11 @@ function App() {
                         Option B (Black)
                       </div>
                       <h3 className="text-4xl font-bold mb-4">{currentSong.optionA}</h3>
-                      <div className="text-muted-foreground text-sm">
-                        Press <kbd className="px-2 py-1 bg-muted rounded">B</kbd>
-                        {_battleChoices[_currentIndex] && ' or '}
-                        {_battleChoices[_currentIndex] && <kbd className="px-2 py-1 bg-muted rounded">Space</kbd>}
-                      </div>
+                      {!_battleChoices[_currentIndex] && (
+                        <div className="text-muted-foreground text-sm">
+                          Press <kbd className="px-2 py-1 bg-muted rounded">B</kbd>
+                        </div>
+                      )}
                       {_battleChoices[_currentIndex] === 'A' && (
                         <motion.div
                           initial={{ scale: 0 }}
@@ -273,11 +273,11 @@ function App() {
                         Option O (Orange)
                       </div>
                       <h3 className="text-4xl font-bold mb-4">{currentSong.optionB}</h3>
-                      <div className="text-muted-foreground text-sm">
-                        Press <kbd className="px-2 py-1 bg-muted rounded">O</kbd>
-                        {_battleChoices[_currentIndex] && ' or '}
-                        {_battleChoices[_currentIndex] && <kbd className="px-2 py-1 bg-muted rounded">Space</kbd>}
-                      </div>
+                      {!_battleChoices[_currentIndex] && (
+                        <div className="text-muted-foreground text-sm">
+                          Press <kbd className="px-2 py-1 bg-muted rounded">O</kbd>
+                        </div>
+                      )}
                       {_battleChoices[_currentIndex] === 'B' && (
                         <motion.div
                           initial={{ scale: 0 }}
@@ -290,6 +290,11 @@ function App() {
                     </Card>
                   </motion.div>
                 </div>
+                {_battleChoices[_currentIndex] && (
+                  <div className="text-center text-muted-foreground text-sm">
+                    Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
+                  </div>
+                )}
                 {winsPerSong.get(_currentIndex) && _battleChoices[_currentIndex] && (
                   <div 
                     className="flex justify-center gap-4 cursor-pointer"
