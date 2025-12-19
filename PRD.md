@@ -13,18 +13,18 @@ This is a single-screen app with keyboard navigation, state tracking for song pr
 ## Essential Features
 
 ### Song Navigation System
-- **Functionality**: Display current song and navigate through setlist with keyboard controls
-- **Purpose**: Allow band to advance through their performance without fumbling with touch controls
-- **Trigger**: Space bar (fixed songs), B/O keys (battle choices), Backspace (previous song)
+- **Functionality**: Display current song and navigate through setlist with keyboard controls, with reset button to return to start
+- **Purpose**: Allow band to advance through their performance without fumbling with touch controls, and quickly reset for a new show
+- **Trigger**: Space bar (fixed songs), B/O keys (battle choices), Backspace (previous song), Reset button (return to start)
 - **Progression**: Show upcoming song → Press key → Animate transition → Update current song → Calculate bingo wins → Show next song preview
-- **Success criteria**: Keyboard shortcuts work reliably, current position persists if page refreshes, transitions feel smooth under 300ms
+- **Success criteria**: Keyboard shortcuts work reliably, current position persists if page refreshes, transitions feel smooth under 300ms, reset button clears all progress and battle choices
 
 ### Song Battle Selection
-- **Functionality**: Present two song options for audience to choose between, select winner via keyboard
-- **Purpose**: Let band mark which battle option the audience voted for
+- **Functionality**: Present two options, each containing multiple songs, for audience to choose between, select winner via keyboard
+- **Purpose**: Let band mark which battle option the audience voted for, with all songs in the winning option being marked on bingo cards
 - **Trigger**: Pressing 'B' for black option or 'O' for orange option when on a battle slide
-- **Progression**: Display battle options → Audience votes → Band presses B or O → Selected option highlights → Progress to next item → Battle result counts toward bingo
-- **Success criteria**: Visual distinction between options, selected choice clearly indicated, selection cannot be changed once made
+- **Progression**: Display battle options (e.g., Song3A + Song4A vs Song3B + Song4B) → Audience votes → Band presses B or O → Selected option highlights → Progress to next item → All songs in battle result count toward bingo
+- **Success criteria**: Visual distinction between options, selected choice clearly indicated, keyboard hints visible, all songs in winning option marked on bingo cards
 
 ### Bingo Card Tracking
 - **Functionality**: Calculate which cards achieve line/full house as songs are revealed
@@ -47,6 +47,8 @@ This is a single-screen app with keyboard navigation, state tracking for song pr
 - **Last Song**: Forward keys do nothing, visual indication show is complete
 - **Modal Open During Navigation**: Close any open modals before processing navigation keys
 - **No Bingo Wins**: Display "0" clearly rather than hiding the indicator
+- **Reset During Show**: Reset button clears progress and returns to first song, clearing all battle choices
+- **Battle with Multiple Songs**: Display all songs in each battle option, mark all selected songs on bingo cards
 
 ## Design Direction
 Backstage rock show aesthetic—bold, high-energy, and functional under stage lighting conditions. The design should feel like professional tour equipment: rugged, purposeful, and zero-nonsense. High contrast for visibility, large touch targets even though keyboard is primary, and a color palette that evokes stage lights and equipment cases.
@@ -88,6 +90,7 @@ Animations should feel mechanical and purposeful, like stage equipment moving in
 - **Components**: 
   - Card (for song display areas and battle options)
   - Badge (for bingo win counts)
+  - Button (for reset functionality)
   - Dialog (for showing winning card details)
   - Progress (for setlist progress bar)
   - ScrollArea (for list of winning cards in modal)
@@ -103,8 +106,9 @@ Animations should feel mechanical and purposeful, like stage equipment moving in
 - **Icon Selection**: 
   - MusicNote for songs
   - Trophy for bingo wins
-  - ArrowLeft/ArrowRight for navigation hints
+  - ArrowCounterClockwise for reset button
   - Keyboard for control reminders
+  - ListChecks for played songs list
 - **Spacing**: 
   - Page padding: 8 (2rem)
   - Section gaps: 6 (1.5rem)

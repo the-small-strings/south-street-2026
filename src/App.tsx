@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
-import { MusicNote, Trophy, Keyboard, ListChecks } from '@phosphor-icons/react'
+import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Song, BingoCard } from '@/lib/types'
 import { calculateBingoWins } from '@/lib/bingo'
@@ -89,6 +90,11 @@ function App() {
     setModalOpen(true)
   }
 
+  const handleReset = () => {
+    setCurrentIndex(0)
+    setBattleChoices({})
+  }
+
   const getRevealedSongsUpTo = (songIndex: number): Set<string> => {
     const revealed = new Set<string>()
     for (let i = 0; i <= songIndex; i++) {
@@ -97,7 +103,8 @@ function App() {
       if (song.type === 'fixed') {
         revealed.add(song.name)
       } else if (song.type === 'battle' && song.selected) {
-        revealed.add(song.selected === 'A' ? song.optionA : song.optionB)
+        const selectedOptions = song.selected === 'A' ? song.optionA : song.optionB
+        selectedOptions.forEach(songName => revealed.add(songName))
       }
     }
     return revealed
@@ -124,8 +131,8 @@ function App() {
     if (song.type === 'fixed') {
       return { index: idx, name: song.name, type: 'fixed' as const }
     } else if (song.type === 'battle' && _battleChoices[idx]) {
-      const selectedSong = _battleChoices[idx] === 'A' ? song.optionA : song.optionB
-      return { index: idx, name: selectedSong, type: 'battle' as const }
+      const selectedSongs = _battleChoices[idx] === 'A' ? song.optionA : song.optionB
+      return { index: idx, name: selectedSongs.join(' + '), type: 'battle' as const }
     }
     return null
   }).filter(Boolean) as Array<{ index: number; name: string; type: 'fixed' | 'battle' }>
@@ -139,9 +146,20 @@ function App() {
             <MusicNote size={32} weight="fill" className="text-primary" />
             <h1 className="text-2xl font-bold">Gig Manager</h1>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Keyboard size={20} />
-            <span>Space / B / O / Backspace</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Keyboard size={20} />
+              <span>Space / B / O / Backspace</span>
+            </div>
+            <Button
+              onClick={handleReset}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <ArrowCounterClockwise size={16} />
+              Reset
+            </Button>
           </div>
         </div>
 
@@ -229,7 +247,11 @@ function App() {
                       <div className="text-sm uppercase tracking-wide mb-3" style={{ color: 'var(--battle-blue)' }}>
                         Option B (Black)
                       </div>
-                      <h3 className="text-4xl font-bold mb-4">{currentSong.optionA}</h3>
+                      <div className="space-y-2 mb-4">
+                        {currentSong.optionA.map((songName, idx) => (
+                          <h3 key={idx} className="text-3xl font-bold">{songName}</h3>
+                        ))}
+                      </div>
                       {!_battleChoices[_currentIndex] && (
                         <div className="text-muted-foreground text-sm">
                           Press <kbd className="px-2 py-1 bg-muted rounded">B</kbd>
@@ -272,7 +294,11 @@ function App() {
                       <div className="text-sm uppercase tracking-wide mb-3" style={{ color: 'var(--battle-orange)' }}>
                         Option O (Orange)
                       </div>
-                      <h3 className="text-4xl font-bold mb-4">{currentSong.optionB}</h3>
+                      <div className="space-y-2 mb-4">
+                        {currentSong.optionB.map((songName, idx) => (
+                          <h3 key={idx} className="text-3xl font-bold">{songName}</h3>
+                        ))}
+                      </div>
                       {!_battleChoices[_currentIndex] && (
                         <div className="text-muted-foreground text-sm">
                           Press <kbd className="px-2 py-1 bg-muted rounded">O</kbd>
@@ -327,7 +353,7 @@ function App() {
             <div className="text-lg font-medium">
               {nextSong.type === 'fixed' 
                 ? nextSong.name 
-                : `Battle: ${nextSong.optionA} vs ${nextSong.optionB}`
+                : `Battle: ${nextSong.optionA.join(' + ')} vs ${nextSong.optionB.join(' + ')}`
               }
             </div>
           </Card>
@@ -423,8 +449,8 @@ function App() {
                     ? _songs[selectedSongIndex].name 
                     : `${_songs[selectedSongIndex].type === 'battle' && _battleChoices[selectedSongIndex]
                         ? (_battleChoices[selectedSongIndex] === 'A' 
-                          ? _songs[selectedSongIndex].optionA 
-                          : _songs[selectedSongIndex].optionB)
+                          ? _songs[selectedSongIndex].optionA.join(' + ')
+                          : _songs[selectedSongIndex].optionB.join(' + '))
                         : 'Battle'
                       }`
                   }

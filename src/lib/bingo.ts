@@ -19,11 +19,8 @@ export function calculateBingoWins(
     if (song.type === 'fixed') {
       revealedSongs.add(song.name)
     } else if (song.type === 'battle' && song.selected) {
-      if (song.selected === 'A') {
-        revealedSongs.add(song.optionA)
-      } else {
-        revealedSongs.add(song.optionB)
-      }
+      const selectedOptions = song.selected === 'A' ? song.optionA : song.optionB
+      selectedOptions.forEach(songName => revealedSongs.add(songName))
     }
 
     const newLineWinners: number[] = []

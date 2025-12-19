@@ -8,8 +8,8 @@ export interface FixedSong {
 export interface BattleSong {
   type: 'battle'
   name: string
-  optionA: string
-  optionB: string
+  optionA: string[]
+  optionB: string[]
   selected?: 'A' | 'B'
 }
 
