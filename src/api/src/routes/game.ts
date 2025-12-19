@@ -1,7 +1,21 @@
 import { Router, Request, Response } from 'express';
+import { Server } from 'socket.io';
 import { gameState } from '../state';
 
 export const router = Router();
+
+let io: Server | null = null;
+
+export function setSocketIO(socketIO: Server) {
+  io = socketIO;
+}
+
+function emitGameStateUpdate() {
+  if (io) {
+    const currentInfo = gameState.getCurrentSongInfo();
+    io.emit('gameStateUpdate', currentInfo);
+  }
+}
 
 // Get current game state (current song, progress, wins)
 router.get('/current', (req: Request, res: Response) => {
@@ -16,12 +30,14 @@ router.get('/full', (req: Request, res: Response) => {
 // Advance to next song
 router.post('/next', (req: Request, res: Response) => {
   const result = gameState.advanceToNext();
+  emitGameStateUpdate();
   res.json(result);
 });
 
 // Go back to previous song
 router.post('/previous', (req: Request, res: Response) => {
   const result = gameState.goBack();
+  emitGameStateUpdate();
   res.json(result);
 });
 
@@ -33,6 +49,7 @@ router.post('/goto/:index', (req: Request, res: Response) => {
     return;
   }
   const result = gameState.goToSong(index);
+  emitGameStateUpdate();
   res.json(result);
 });
 
@@ -52,11 +69,13 @@ router.post('/battle/:songIndex', (req: Request, res: Response) => {
   }
 
   const result = gameState.setBattleChoice(songIndex, choice);
+  emitGameStateUpdate();
   res.json(result);
 });
 
 // Reset the game
 router.post('/reset', (req: Request, res: Response) => {
   const result = gameState.reset();
+  emitGameStateUpdate();
   res.json(result);
 });

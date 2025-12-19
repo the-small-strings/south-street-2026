@@ -1,12 +1,24 @@
 import express, { Express, Request, Response } from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import cors from 'cors';
 import { router as healthRouter } from './routes/health';
-import { router as gameRouter } from './routes/game';
+import { router as gameRouter, setSocketIO } from './routes/game';
 import { router as songsRouter } from './routes/songs';
 import { router as bingoRouter } from './routes/bingo';
 
 const app: Express = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
+});
 const port = process.env.PORT || 3001;
+
+// Set socket.io on game router for emitting events
+setSocketIO(io);
 
 // Middleware
 app.use(cors());
@@ -27,9 +39,19 @@ app.get('/', (req: Request, res: Response) => {
   });
 });
 
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+  
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
 // Start server
-app.listen(port, () => {
+httpServer.listen(port, () => {
   console.log(`⚡️ Server is running at http://localhost:${port}`);
 });
 
+export { io };
 export default app;

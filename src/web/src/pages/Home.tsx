@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { MusicNote } from '@phosphor-icons/react'
@@ -12,11 +11,18 @@ export function Home() {
 				<p className="text-muted-foreground mb-6">
 					Audience interaction and high-energy music collide.
 				</p>
-				<Link to="/band">
-					<Button size="lg" className="w-full">
-						Go to Band View
-					</Button>
-				</Link>
+				<div className="space-y-3">
+					<a href="/band" target="_blank" rel="noopener noreferrer">
+						<Button size="lg" className="w-full">
+							Go to Band View
+						</Button>
+					</a>
+					<a href="/audience" target="_blank" rel="noopener noreferrer">
+						<Button size="lg" variant="outline" className="w-full">
+							Go to Audience View
+						</Button>
+					</a>
+				</div>
 			</Card>
 		</div>
 	)
