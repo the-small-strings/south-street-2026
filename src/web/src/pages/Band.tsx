@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -20,11 +20,14 @@ export function Band() {
 
 	const [modalOpen, setModalOpen] = useState(false)
 	const [selectedSongIndex, setSelectedSongIndex] = useState<number | null>(null)
+	const [selectedWinType, setSelectedWinType] = useState<'line' | 'fullhouse' | 'all'>('all')
 	const [winningCards, setWinningCards] = useState<{
 		lineWinners: BingoCard[]
 		fullhouseWinners: BingoCard[]
 		revealedSongs: string[]
 	} | null>(null)
+
+	const currentSongRef = useRef<HTMLDivElement>(null)
 
 	// Load initial state
 	useEffect(() => {
@@ -138,8 +141,20 @@ export function Band() {
 		return () => window.removeEventListener('keydown', handleKeyDown)
 	}, [currentInfo, modalOpen, handleAdvance, handleGoBack, handleBattleChoice])
 
-	const openWinnersModal = async (songIndex: number) => {
+	// Scroll current song into view
+	useEffect(() => {
+		// Use setTimeout to ensure the DOM has updated after state changes
+		const timeoutId = setTimeout(() => {
+			if (currentSongRef.current) {
+				currentSongRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+			}
+		}, 100)
+		return () => clearTimeout(timeoutId)
+	}, [currentInfo?.songNumber, gameState?.playedSongs.length])
+
+	const openWinnersModal = async (songIndex: number, winType: 'line' | 'fullhouse' | 'all' = 'all') => {
 		setSelectedSongIndex(songIndex)
+		setSelectedWinType(winType)
 		try {
 			const winners = await api.getWinningCardsForSong(songIndex)
 			setWinningCards(winners)
@@ -250,18 +265,21 @@ export function Band() {
 											</h2>
 										</div>
 										{wins && (wins.line > 0 || wins.fullhouse > 0) && (
-											<div
-												className="flex flex-col gap-2 cursor-pointer"
-												onClick={() => openWinnersModal(currentIndex)}
-											>
-												{wins.line > 0 && (
-													<Badge className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors">
-														<Trophy size={20} weight="fill" className="mr-2" />
-														{wins.line} Line{wins.line !== 1 ? 's' : ''}
-													</Badge>
-												)}
-												{wins.fullhouse > 0 && (
-													<Badge className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors">
+												<div className="flex flex-col gap-2">
+													{wins.line > 0 && (
+														<Badge
+															className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors cursor-pointer"
+															onClick={() => openWinnersModal(currentIndex, 'line')}
+														>
+															<Trophy size={20} weight="fill" className="mr-2" />
+															{wins.line} Line{wins.line !== 1 ? 's' : ''}
+														</Badge>
+													)}
+													{wins.fullhouse > 0 && (
+														<Badge
+															className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors cursor-pointer"
+															onClick={() => openWinnersModal(currentIndex, 'fullhouse')}
+														>
 														<Trophy size={20} weight="fill" className="mr-2" />
 														{wins.fullhouse} Full House{wins.fullhouse !== 1 ? 's' : ''}
 													</Badge>
@@ -368,18 +386,21 @@ export function Band() {
 										</div>
 									)}
 									{wins && currentSong.selected && (wins.line > 0 || wins.fullhouse > 0) && (
-										<div
-											className="flex justify-center gap-4 cursor-pointer"
-											onClick={() => openWinnersModal(currentIndex)}
-										>
+										<div className="flex justify-center gap-4">
 											{wins.line > 0 && (
-												<Badge className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors">
+												<Badge
+													className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors cursor-pointer"
+													onClick={() => openWinnersModal(currentIndex, 'line')}
+												>
 													<Trophy size={20} weight="fill" className="mr-2" />
 													{wins.line} Line{wins.line !== 1 ? 's' : ''}
 												</Badge>
 											)}
 											{wins.fullhouse > 0 && (
-												<Badge className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors">
+												<Badge
+													className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors cursor-pointer"
+													onClick={() => openWinnersModal(currentIndex, 'fullhouse')}
+												>
 													<Trophy size={20} weight="fill" className="mr-2" />
 													{wins.fullhouse} Full House{wins.fullhouse !== 1 ? 's' : ''}
 												</Badge>
@@ -432,10 +453,12 @@ export function Band() {
 								) : (
 									gameState.playedSongs.map((song) => {
 										const songWins = gameState.winsPerSong[song.index]
+										const isCurrentSong = song.index === currentIndex
 										return (
 											<div
 												key={song.index}
-												className={`p-3 rounded-lg border transition-colors ${song.index === currentIndex
+												ref={isCurrentSong ? currentSongRef : null}
+												className={`p-3 rounded-lg border transition-colors ${isCurrentSong
 														? 'bg-primary/10 border-primary'
 														: 'bg-secondary/30 border-border'
 													}`}
@@ -461,7 +484,7 @@ export function Band() {
 															{songWins.line > 0 && (
 																<Badge
 																	className="bg-accent/50 text-accent-foreground text-xs px-1.5 py-0 cursor-pointer hover:bg-accent/70"
-																	onClick={() => openWinnersModal(song.index)}
+																	onClick={() => openWinnersModal(song.index, 'line')}
 																>
 																	<Trophy size={12} weight="fill" className="mr-1" />
 																	{songWins.line}L
@@ -470,7 +493,7 @@ export function Band() {
 															{songWins.fullhouse > 0 && (
 																<Badge
 																	className="bg-accent/50 text-accent-foreground text-xs px-1.5 py-0 cursor-pointer hover:bg-accent/70"
-																	onClick={() => openWinnersModal(song.index)}
+																	onClick={() => openWinnersModal(song.index, 'fullhouse')}
 																>
 																	<Trophy size={12} weight="fill" className="mr-1" />
 																	{songWins.fullhouse}FH
@@ -494,7 +517,7 @@ export function Band() {
 					<DialogHeader>
 						<DialogTitle className="flex items-center gap-2">
 							<Trophy size={24} weight="fill" className="text-accent" />
-							Winning Cards
+						{selectedWinType === 'line' ? 'Line Wins' : selectedWinType === 'fullhouse' ? 'Full House Wins' : 'Winning Cards'}
 							{selectedSongIndex !== null && gameState.songs[selectedSongIndex] && (
 								<span className="text-muted-foreground font-normal">
 									— {gameState.songs[selectedSongIndex].type === 'fixed'
@@ -512,7 +535,7 @@ export function Band() {
 					</DialogHeader>
 					<ScrollArea className="max-h-[60vh] pr-4">
 						<div className="space-y-6">
-							{winningCards && winningCards.lineWinners.length > 0 && (
+							{winningCards && winningCards.lineWinners.length > 0 && (selectedWinType === 'line' || selectedWinType === 'all') && (
 								<div>
 									<h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
 										<Badge className="bg-accent text-accent-foreground">
@@ -527,9 +550,9 @@ export function Band() {
 								</div>
 							)}
 
-							{winningCards && winningCards.fullhouseWinners.length > 0 && (
+							{winningCards && winningCards.fullhouseWinners.length > 0 && (selectedWinType === 'fullhouse' || selectedWinType === 'all') && (
 								<>
-									{winningCards.lineWinners.length > 0 && <Separator />}
+									{winningCards.lineWinners.length > 0 && selectedWinType === 'all' && <Separator />}
 									<div>
 										<h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
 											<Badge className="bg-accent text-accent-foreground">
@@ -545,7 +568,10 @@ export function Band() {
 								</>
 							)}
 
-							{(!winningCards || (winningCards.lineWinners.length === 0 && winningCards.fullhouseWinners.length === 0)) && (
+							{(!winningCards || 
+								(selectedWinType === 'line' && winningCards.lineWinners.length === 0) ||
+								(selectedWinType === 'fullhouse' && winningCards.fullhouseWinners.length === 0) ||
+								(selectedWinType === 'all' && winningCards.lineWinners.length === 0 && winningCards.fullhouseWinners.length === 0)) && (
 								<div className="text-center py-8 text-muted-foreground">
 									No winners at this song
 								</div>
