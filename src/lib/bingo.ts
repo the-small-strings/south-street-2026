@@ -14,6 +14,8 @@ export function calculateBingoWins(
   for (let songIndex = 0; songIndex <= currentIndex; songIndex++) {
     const song = songs[songIndex]
     
+    if (!song) continue
+    
     if (song.type === 'fixed') {
       revealedSongs.add(song.name)
     } else if (song.type === 'battle' && song.selected) {

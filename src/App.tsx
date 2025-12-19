@@ -31,11 +31,12 @@ function App() {
   const progress = _songs.length > 0 ? ((_currentIndex + 1) / _songs.length) * 100 : 0
 
   const songsWithBattleResults: Song[] = _songs.map((song, idx) => {
+    if (!song) return song
     if (song.type === 'battle' && _battleChoices[idx]) {
       return { ...song, selected: _battleChoices[idx] }
     }
     return song
-  })
+  }).filter(Boolean)
 
   const winsPerSong = calculateBingoWins(_bingoCards, songsWithBattleResults, _currentIndex)
 
@@ -90,6 +91,7 @@ function App() {
     const revealed = new Set<string>()
     for (let i = 0; i <= songIndex; i++) {
       const song = songsWithBattleResults[i]
+      if (!song) continue
       if (song.type === 'fixed') {
         revealed.add(song.name)
       } else if (song.type === 'battle' && song.selected) {
