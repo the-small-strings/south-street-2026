@@ -134,7 +134,8 @@ function App() {
       return { index: idx, name: song.name, type: 'fixed' as const }
     } else if (song.type === 'battle' && _battleChoices[idx]) {
       const selectedSongs = _battleChoices[idx] === 'A' ? song.optionA : song.optionB
-      return { index: idx, name: selectedSongs.join(' + '), type: 'battle' as const }
+      const songName = Array.isArray(selectedSongs) ? selectedSongs.join(' + ') : String(selectedSongs)
+      return { index: idx, name: songName, type: 'battle' as const }
     }
     return null
   }).filter(Boolean) as Array<{ index: number; name: string; type: 'fixed' | 'battle' }>
