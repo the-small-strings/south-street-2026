@@ -389,20 +389,24 @@ export function Band() {
 										<div className="flex justify-center gap-4">
 											{wins.line > 0 && (
 												<Badge
-													className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors cursor-pointer"
+													className={`bg-accent text-accent-foreground text-lg px-4 py-2 ${wins.lineWinners.length > 2 ? 'hover:bg-accent/90 transition-colors cursor-pointer' : ''}`}
 													onClick={() => openWinnersModal(currentIndex, 'line')}
 												>
 													<Trophy size={20} weight="fill" className="mr-2" />
-													{wins.line} Line{wins.line !== 1 ? 's' : ''}
+													{wins.lineWinners.length <= 2
+														? `Line: Card${wins.lineWinners.length > 1 ? 's' : ''} ${wins.lineWinners.join(', ')}`
+														: `${wins.line} Line${wins.line !== 1 ? 's' : ''}`}
 												</Badge>
 											)}
 											{wins.fullhouse > 0 && (
 												<Badge
-													className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors cursor-pointer"
+													className={`bg-accent text-accent-foreground text-lg px-4 py-2 ${wins.fullhouseWinners.length > 2 ? 'hover:bg-accent/90 transition-colors cursor-pointer' : ''}`}
 													onClick={() => openWinnersModal(currentIndex, 'fullhouse')}
 												>
-													<Trophy size={20} weight="fill" className="mr-2" />
-													{wins.fullhouse} Full House{wins.fullhouse !== 1 ? 's' : ''}
+												<Trophy size={20} weight="fill" className="mr-2" />
+												{wins.fullhouseWinners.length <= 2
+													? `Full House: Card${wins.fullhouseWinners.length > 1 ? 's' : ''} ${wins.fullhouseWinners.join(', ')}`
+													: `${wins.fullhouse} Full House${wins.fullhouse !== 1 ? 's' : ''}`}
 												</Badge>
 											)}
 										</div>
@@ -483,20 +487,24 @@ export function Band() {
 														<div className="flex flex-col gap-1">
 															{songWins.line > 0 && (
 																<Badge
-																	className="bg-accent/50 text-accent-foreground text-xs px-1.5 py-0 cursor-pointer hover:bg-accent/70"
+																	className={`bg-accent/50 text-accent-foreground text-xs px-1.5 py-0 ${songWins.lineWinners.length > 2 ? 'cursor-pointer hover:bg-accent/70' : ''}`}
 																	onClick={() => openWinnersModal(song.index, 'line')}
 																>
 																	<Trophy size={12} weight="fill" className="mr-1" />
-																	{songWins.line}L
+																	{songWins.lineWinners.length <= 2
+																		? `L: ${songWins.lineWinners.join(', ')}`
+																		: `${songWins.line}L`}
 																</Badge>
 															)}
 															{songWins.fullhouse > 0 && (
 																<Badge
-																	className="bg-accent/50 text-accent-foreground text-xs px-1.5 py-0 cursor-pointer hover:bg-accent/70"
+																	className={`bg-accent/50 text-accent-foreground text-xs px-1.5 py-0 ${songWins.fullhouseWinners.length > 2 ? 'cursor-pointer hover:bg-accent/70' : ''}`}
 																	onClick={() => openWinnersModal(song.index, 'fullhouse')}
 																>
 																	<Trophy size={12} weight="fill" className="mr-1" />
-																	{songWins.fullhouse}FH
+																	{songWins.fullhouseWinners.length <= 2
+																		? `FH: ${songWins.fullhouseWinners.join(', ')}`
+																		: `${songWins.fullhouse}FH`}
 																</Badge>
 															)}
 														</div>
