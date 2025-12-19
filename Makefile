@@ -5,3 +5,7 @@ help: ## show this help
 
 run-web: ## run the web application
 	(cd src/web && npm run dev)
+
+run-api: ## run the api
+	(cd src/api && npm run dev)
+	
