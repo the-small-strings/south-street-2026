@@ -22,7 +22,18 @@ function App() {
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedSongIndex, setSelectedSongIndex] = useState<number | null>(null)
 
-  const _songs = songs ?? []
+  const normalizeSong = (song: Song): Song => {
+    if (song.type === 'battle') {
+      return {
+        ...song,
+        optionA: Array.isArray(song.optionA) ? song.optionA : [song.optionA],
+        optionB: Array.isArray(song.optionB) ? song.optionB : [song.optionB],
+      }
+    }
+    return song
+  }
+
+  const _songs = (songs ?? []).map(normalizeSong)
   const _bingoCards = bingoCards ?? []
   const _currentIndex = currentIndex ?? 0
   const _battleChoices = battleChoices ?? {}
@@ -251,7 +262,7 @@ function App() {
                         Option B (Black)
                       </div>
                       <div className="space-y-2 mb-4">
-                        {currentSong.optionA.map((songName, idx) => (
+                        {(Array.isArray(currentSong.optionA) ? currentSong.optionA : [currentSong.optionA]).map((songName, idx) => (
                           <h3 key={idx} className="text-3xl font-bold">{songName}</h3>
                         ))}
                       </div>
@@ -298,7 +309,7 @@ function App() {
                         Option O (Orange)
                       </div>
                       <div className="space-y-2 mb-4">
-                        {currentSong.optionB.map((songName, idx) => (
+                        {(Array.isArray(currentSong.optionB) ? currentSong.optionB : [currentSong.optionB]).map((songName, idx) => (
                           <h3 key={idx} className="text-3xl font-bold">{songName}</h3>
                         ))}
                       </div>
@@ -356,7 +367,7 @@ function App() {
             <div className="text-lg font-medium">
               {nextSong.type === 'fixed' 
                 ? nextSong.name 
-                : `Battle: ${nextSong.optionA.join(' + ')} vs ${nextSong.optionB.join(' + ')}`
+                : `Battle: ${(Array.isArray(nextSong.optionA) ? nextSong.optionA : [nextSong.optionA]).join(' + ')} vs ${(Array.isArray(nextSong.optionB) ? nextSong.optionB : [nextSong.optionB]).join(' + ')}`
               }
             </div>
           </Card>
@@ -452,8 +463,8 @@ function App() {
                     ? _songs[selectedSongIndex].name 
                     : `${_songs[selectedSongIndex].type === 'battle' && _battleChoices[selectedSongIndex]
                         ? (_battleChoices[selectedSongIndex] === 'A' 
-                          ? _songs[selectedSongIndex].optionA.join(' + ')
-                          : _songs[selectedSongIndex].optionB.join(' + '))
+                          ? (Array.isArray(_songs[selectedSongIndex].optionA) ? _songs[selectedSongIndex].optionA : [_songs[selectedSongIndex].optionA]).join(' + ')
+                          : (Array.isArray(_songs[selectedSongIndex].optionB) ? _songs[selectedSongIndex].optionB : [_songs[selectedSongIndex].optionB]).join(' + '))
                         : 'Battle'
                       }`
                   }
