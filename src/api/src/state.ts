@@ -63,7 +63,8 @@ class GameStateManager {
   }
 
   private loadData(): void {
-    const assetsPath = path.join(__dirname, '..', 'assets');
+    const assetFolder = process.env.ASSET_FOLDER || "test";
+    const assetsPath = path.join(__dirname, '..', 'assets', assetFolder);
 
     // Load config.yml
     const configPath = path.join(assetsPath, 'config.yml');

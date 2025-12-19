@@ -93,7 +93,7 @@ function FixedSongDisplay({ name }: { name: string }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="text-9xl font-bold text-white leading-tight"
+          className="text-9xl font-bold text-white leading-tight audience-song-title"
           style={{ textShadow: '0 4px 20px rgba(251, 146, 60, 0.3)' }}
         >
           {name}
@@ -134,7 +134,7 @@ function BattleSongDisplay({ battle }: { battle: BattleSong }) {
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.5 + idx * 0.1 }}
-                    className="text-8xl font-bold text-black"
+                    className="text-8xl font-bold text-black audience-song-title"
                   >
                     {song}
                   </motion.h1>
@@ -165,7 +165,7 @@ function BattleSongDisplay({ battle }: { battle: BattleSong }) {
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.5 + idx * 0.1 }}
-                    className="text-8xl font-bold text-white"
+                    className="text-8xl font-bold text-white audience-song-title"
                   >
                     {song}
                   </motion.h1>
@@ -201,7 +201,7 @@ function BattleSongDisplay({ battle }: { battle: BattleSong }) {
                 initial={{ opacity: 0, x: -30 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.5 + idx * 0.1 }}
-                className="text-8xl font-bold text-black"
+                className="text-8xl font-bold text-black audience-song-battle-title"
               >
                 {song}
               </motion.div>
@@ -216,7 +216,7 @@ function BattleSongDisplay({ battle }: { battle: BattleSong }) {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 bg-white text-black text-5xl font-black px-10 py-5 rounded-full shadow-2xl border-4 border-black"
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 bg-white text-black text-5xl font-black px-10 py-5 rounded-full shadow-2xl border-4 border-black song-battle-vs"
         >
           {/* ⚔️ VS */} vs
         </motion.div>
@@ -237,7 +237,7 @@ function BattleSongDisplay({ battle }: { battle: BattleSong }) {
                 initial={{ opacity: 0, x: 30 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.5 + idx * 0.1 }}
-                className="text-8xl font-bold text-white"
+                className="text-8xl font-bold text-white audience-song-battle-title"
               >
                 {song}
               </motion.div>

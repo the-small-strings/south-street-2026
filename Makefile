@@ -6,6 +6,9 @@ help: ## show this help
 run-web: ## run the web application
 	(cd src/web && npm run dev)
 
-run-api: ## run the api
-	(cd src/api && npm run dev)
+run-api-test: ## run the api with test data
+	(cd src/api && ASSET_FOLDER=test npm run dev)
+	
+run-api-ss1: ## run the api with ss1 data
+	(cd src/api && ASSET_FOLDER=ss1 npm run dev)
 	

@@ -184,3 +184,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+.song-battle-vs {
+  font-size: 36px;
+}
+.audience-song-battle-title {
+ font-size: 120px; 
+}
+.audience-song-title {
+ font-size: 150px; 
+}

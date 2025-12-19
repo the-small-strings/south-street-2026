@@ -305,7 +305,7 @@ export function Band() {
 												</div>
 												{!currentSong.selected && (
 													<div className="text-muted-foreground text-sm">
-														Press <kbd className="px-2 py-1 bg-muted rounded">B</kbd>
+														Press <kbd className="px-2 py-1 bg-muted rounded">O</kbd>
 													</div>
 												)}
 												{currentSong.selected === 'A' && (
@@ -345,7 +345,7 @@ export function Band() {
 												</div>
 												{!currentSong.selected && (
 													<div className="text-muted-foreground text-sm">
-														Press <kbd className="px-2 py-1 bg-muted rounded">O</kbd>
+														Press <kbd className="px-2 py-1 bg-muted rounded">B</kbd>
 													</div>
 												)}
 												{currentSong.selected === 'B' && (
