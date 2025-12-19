@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
-import { MusicNote, Trophy, Keyboard } from '@phosphor-icons/react'
+import { MusicNote, Trophy, Keyboard, ListChecks } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Song, BingoCard } from '@/lib/types'
 import { calculateBingoWins } from '@/lib/bingo'
@@ -118,9 +118,20 @@ function App() {
     )
   }
 
+  const playedSongs = _songs.slice(0, _currentIndex + 1).map((song, idx) => {
+    if (song.type === 'fixed') {
+      return { index: idx, name: song.name, type: 'fixed' as const }
+    } else if (song.type === 'battle' && _battleChoices[idx]) {
+      const selectedSong = _battleChoices[idx] === 'A' ? song.optionA : song.optionB
+      return { index: idx, name: selectedSong, type: 'battle' as const }
+    }
+    return null
+  }).filter(Boolean) as Array<{ index: number; name: string; type: 'fixed' | 'battle' }>
+
   return (
     <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_300px] gap-6">
+        <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <MusicNote size={32} weight="fill" className="text-primary" />
@@ -325,6 +336,76 @@ function App() {
             <h3 className="text-xl font-bold text-accent">Show Complete!</h3>
           </Card>
         )}
+        </div>
+
+        <div className="space-y-4">
+          <Card className="p-4 sticky top-8">
+            <div className="flex items-center gap-2 mb-4">
+              <ListChecks size={24} weight="fill" className="text-primary" />
+              <h3 className="text-lg font-semibold">Songs Played</h3>
+            </div>
+            <ScrollArea className="h-[calc(100vh-200px)]">
+              <div className="space-y-2 pr-4">
+                {playedSongs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No songs played yet
+                  </p>
+                ) : (
+                  playedSongs.map((song) => (
+                    <div
+                      key={song.index}
+                      className={`p-3 rounded-lg border transition-colors ${
+                        song.index === _currentIndex
+                          ? 'bg-primary/10 border-primary'
+                          : 'bg-secondary/30 border-border'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">
+                            {song.name}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-muted-foreground">
+                              #{song.index + 1}
+                            </span>
+                            {song.type === 'battle' && (
+                              <Badge variant="outline" className="text-xs px-1.5 py-0">
+                                Battle
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        {winsPerSong.get(song.index) && (
+                          <div className="flex flex-col gap-1">
+                            {winsPerSong.get(song.index)!.line > 0 && (
+                              <Badge 
+                                className="bg-accent/50 text-accent-foreground text-xs px-1.5 py-0 cursor-pointer hover:bg-accent/70"
+                                onClick={() => openWinnersModal(song.index)}
+                              >
+                                <Trophy size={12} weight="fill" className="mr-1" />
+                                {winsPerSong.get(song.index)!.line}L
+                              </Badge>
+                            )}
+                            {winsPerSong.get(song.index)!.fullhouse > 0 && (
+                              <Badge 
+                                className="bg-accent/50 text-accent-foreground text-xs px-1.5 py-0 cursor-pointer hover:bg-accent/70"
+                                onClick={() => openWinnersModal(song.index)}
+                              >
+                                <Trophy size={12} weight="fill" className="mr-1" />
+                                {winsPerSong.get(song.index)!.fullhouse}FH
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </Card>
+        </div>
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
