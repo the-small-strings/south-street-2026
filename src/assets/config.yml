@@ -1,0 +1,49 @@
+songs:
+ - name: Song1
+ - name: Song2
+ - optionSet: # Option set 1
+    - - name: Song3A
+      - name: Song4A
+    - - name: Song3B
+      - name: Song4B
+ - optionSet: # Option set 2
+    - - name: Song5A
+      - name: Song6A
+    - - name: Song5B
+      - name: Song6B
+ - optionSet: # Option set 3
+    - - name: Song7A
+      - name: Song8A
+    - - name: Song7B
+      - name: Song8B
+ - optionSet: # Option set 4
+    - - name: Song9A
+      - name: Song10A
+    - - name: Song9B
+      - name: Song10B
+ - name: Song11
+ - name: Song12
+ - name: Song13
+ - optionSet: # Option set 5
+    - - name: Song14A
+      - name: Song15A
+    - - name: Song14B
+      - name: Song15B
+ - optionSet: # Option set 6
+    - - name: Song16A
+      - name: Song17A
+    - - name: Song16B
+      - name: Song17B
+ - name: Song18
+ - optionSet: # Option set 7
+    - - name: Song19A
+      - name: Song20A
+    - - name: Song19B
+      - name: Song20B
+ - optionSet: # Option set 8
+    - - name: Song21A
+      - name: Song22A
+    - - name: Song21B
+      - name: Song22B
+ - name: Song23
+ 

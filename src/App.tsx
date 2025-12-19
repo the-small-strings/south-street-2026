@@ -9,13 +9,63 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { Song, BingoCard } from '@/lib/types'
+import type { Song, BingoCard, FixedSong, BattleSong } from '@/lib/types'
 import { calculateBingoWins } from '@/lib/bingo'
 import { BingoCardDisplay } from '@/components/BingoCardDisplay'
+import yaml from 'js-yaml'
+
+// Import the data files
+import configYaml from '@/assets/config.yml?raw'
+import bingoCardsJson from '@/assets/bingo_cards.json'
+
+interface YamlSongItem {
+  name: string
+}
+
+interface YamlSongEntry {
+  name?: string
+  optionSet?: YamlSongItem[][]
+}
+
+interface YamlConfig {
+  songs: YamlSongEntry[]
+}
+
+function parseConfigToSongs(yamlContent: string): Song[] {
+  const config = yaml.load(yamlContent) as YamlConfig
+  const songs: Song[] = []
+
+  for (const entry of config.songs) {
+    if (entry.name) {
+      // Fixed song
+      const fixedSong: FixedSong = {
+        type: 'fixed',
+        name: entry.name
+      }
+      songs.push(fixedSong)
+    } else if (entry.optionSet) {
+      // Battle song - optionSet has [optionA[], optionB[]]
+      const [optionA, optionB] = entry.optionSet
+      const battleSong: BattleSong = {
+        type: 'battle',
+        name: `Battle: ${optionA.map(s => s.name).join(' + ')} vs ${optionB.map(s => s.name).join(' + ')}`,
+        optionA: optionA.map(s => s.name),
+        optionB: optionB.map(s => s.name)
+      }
+      songs.push(battleSong)
+    }
+  }
+
+  return songs
+}
+
+// Parse the loaded data
+const loadedSongs = parseConfigToSongs(configYaml)
+const loadedBingoCards = bingoCardsJson as BingoCard[]
 
 function App() {
-  const [songs] = useKV<Song[]>('songs', [])
-  const [bingoCards] = useKV<BingoCard[]>('bingoCards', [])
+  const [songs] = useKV<Song[]>('songs', loadedSongs)
+  const [bingoCards] = useKV<BingoCard[]>('bingoCards', loadedBingoCards)
   const [currentIndex, setCurrentIndex] = useKV<number>('currentIndex', 0)
   const [battleChoices, setBattleChoices] = useKV<Record<number, 'A' | 'B'>>('battleChoices', {})
   
@@ -158,7 +208,7 @@ function App() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <MusicNote size={32} weight="fill" className="text-primary" />
-            <h1 className="text-2xl font-bold">Gig Manager</h1>
+            <h1 className="text-2xl font-bold">Small Strings vs The Audience</h1>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
