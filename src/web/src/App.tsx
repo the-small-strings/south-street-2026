@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useEffect, useState, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,101 +8,107 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { Song, BingoCard, FixedSong, BattleSong } from '@/lib/types'
-import { calculateBingoWins } from '@/lib/bingo'
+import type { BingoCard, GameState, CurrentSongInfo } from '@/lib/types'
 import { BingoCardDisplay } from '@/components/BingoCardDisplay'
-import yaml from 'js-yaml'
-
-// Import the data files
-import configYaml from '@/assets/config.yml?raw'
-import bingoCardsJson from '@/assets/bingo_cards.json'
-
-interface YamlSongItem {
-  name: string
-}
-
-interface YamlSongEntry {
-  name?: string
-  optionSet?: YamlSongItem[][]
-}
-
-interface YamlConfig {
-  songs: YamlSongEntry[]
-}
-
-function parseConfigToSongs(yamlContent: string): Song[] {
-  const config = yaml.load(yamlContent) as YamlConfig
-  const songs: Song[] = []
-
-  for (const entry of config.songs) {
-    if (entry.name) {
-      // Fixed song
-      const fixedSong: FixedSong = {
-        type: 'fixed',
-        name: entry.name
-      }
-      songs.push(fixedSong)
-    } else if (entry.optionSet) {
-      // Battle song - optionSet has [optionA[], optionB[]]
-      const [optionA, optionB] = entry.optionSet
-      const battleSong: BattleSong = {
-        type: 'battle',
-        name: `Battle: ${optionA.map(s => s.name).join(' + ')} vs ${optionB.map(s => s.name).join(' + ')}`,
-        optionA: optionA.map(s => s.name),
-        optionB: optionB.map(s => s.name)
-      }
-      songs.push(battleSong)
-    }
-  }
-
-  return songs
-}
-
-// Parse the loaded data
-const loadedSongs = parseConfigToSongs(configYaml)
-const loadedBingoCards = bingoCardsJson as BingoCard[]
+import * as api from '@/lib/api'
 
 function App() {
-  const [songs] = useKV<Song[]>('songs', loadedSongs)
-  const [bingoCards] = useKV<BingoCard[]>('bingoCards', loadedBingoCards)
-  const [currentIndex, setCurrentIndex] = useKV<number>('currentIndex', 0)
-  const [battleChoices, setBattleChoices] = useKV<Record<number, 'A' | 'B'>>('battleChoices', {})
+  const [gameState, setGameState] = useState<GameState | null>(null)
+  const [currentInfo, setCurrentInfo] = useState<CurrentSongInfo | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedSongIndex, setSelectedSongIndex] = useState<number | null>(null)
+  const [winningCards, setWinningCards] = useState<{
+    lineWinners: BingoCard[]
+    fullhouseWinners: BingoCard[]
+    revealedSongs: string[]
+  } | null>(null)
 
-  const normalizeSong = (song: Song): Song => {
-    if (song.type === 'battle') {
-      return {
-        ...song,
-        optionA: Array.isArray(song.optionA) ? song.optionA : [song.optionA],
-        optionB: Array.isArray(song.optionB) ? song.optionB : [song.optionB],
+  // Load initial state
+  useEffect(() => {
+    const loadInitialState = async () => {
+      try {
+        setLoading(true)
+        const [fullState, current] = await Promise.all([
+          api.getFullGameState(),
+          api.getCurrentSongInfo()
+        ])
+        setGameState(fullState)
+        setCurrentInfo(current)
+        setError(null)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load game state')
+      } finally {
+        setLoading(false)
       }
     }
-    return song
-  }
+    loadInitialState()
+  }, [])
 
-  const _songs = (songs ?? []).map(normalizeSong)
-  const _bingoCards = bingoCards ?? []
-  const _currentIndex = currentIndex ?? 0
-  const _battleChoices = battleChoices ?? {}
-
-  const currentSong = _songs[_currentIndex]
-  const nextSong = _songs[_currentIndex + 1]
-  const progress = _songs.length > 0 ? ((_currentIndex + 1) / _songs.length) * 100 : 0
-
-  const songsWithBattleResults: Song[] = _songs.map((song, idx) => {
-    if (!song) return song
-    if (song.type === 'battle' && _battleChoices[idx]) {
-      return { ...song, selected: _battleChoices[idx] }
+  const refreshState = useCallback(async () => {
+    try {
+      const fullState = await api.getFullGameState()
+      setGameState(fullState)
+    } catch (err) {
+      console.error('Failed to refresh state:', err)
     }
-    return song
-  }).filter(Boolean)
+  }, [])
 
-  const winsPerSong = calculateBingoWins(_bingoCards, songsWithBattleResults, _currentIndex)
+  const handleAdvance = useCallback(async () => {
+    try {
+      const newInfo = await api.advanceToNextSong()
+      setCurrentInfo(newInfo)
+      await refreshState()
+    } catch (err) {
+      console.error('Failed to advance:', err)
+    }
+  }, [refreshState])
 
+  const handleGoBack = useCallback(async () => {
+    try {
+      const newInfo = await api.goToPreviousSong()
+      setCurrentInfo(newInfo)
+      await refreshState()
+    } catch (err) {
+      console.error('Failed to go back:', err)
+    }
+  }, [refreshState])
+
+  const handleBattleChoice = useCallback(async (choice: 'A' | 'B') => {
+    if (!currentInfo) return
+    try {
+      const newInfo = await api.setBattleChoice(currentInfo.songNumber - 1, choice)
+      setCurrentInfo(newInfo)
+      await refreshState()
+      // Auto-advance after battle choice
+      setTimeout(async () => {
+        if (currentInfo.songNumber < currentInfo.totalSongs) {
+          const advancedInfo = await api.advanceToNextSong()
+          setCurrentInfo(advancedInfo)
+          await refreshState()
+        }
+      }, 300)
+    } catch (err) {
+      console.error('Failed to set battle choice:', err)
+    }
+  }, [currentInfo, refreshState])
+
+  const handleReset = useCallback(async () => {
+    try {
+      const newState = await api.resetGame()
+      setGameState(newState)
+      const newInfo = await api.getCurrentSongInfo()
+      setCurrentInfo(newInfo)
+    } catch (err) {
+      console.error('Failed to reset:', err)
+    }
+  }, [])
+
+  // Keyboard handlers
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
       if (modalOpen) {
         if (e.key === 'Escape') {
           setModalOpen(false)
@@ -111,72 +116,74 @@ function App() {
         return
       }
 
+      if (!currentInfo) return
+
       if (e.key === ' ' || e.key === 'Spacebar') {
         e.preventDefault()
-        if (currentSong?.type === 'fixed' && _currentIndex < _songs.length - 1) {
-          setCurrentIndex(_currentIndex + 1)
-        } else if (currentSong?.type === 'battle' && _battleChoices[_currentIndex] && _currentIndex < _songs.length - 1) {
-          setCurrentIndex(_currentIndex + 1)
+        const currentSong = currentInfo.currentSong
+        if (currentSong?.type === 'fixed' && currentInfo.songNumber < currentInfo.totalSongs) {
+          await handleAdvance()
+        } else if (currentSong?.type === 'battle' && currentSong.selected && currentInfo.songNumber < currentInfo.totalSongs) {
+          await handleAdvance()
         }
       } else if (e.key === 'b' || e.key === 'B') {
         e.preventDefault()
-        if (currentSong?.type === 'battle') {
-          setBattleChoices((prev) => ({ ...(prev ?? {}), [_currentIndex]: 'A' }))
-          if (_currentIndex < _songs.length - 1) {
-            setTimeout(() => setCurrentIndex(_currentIndex + 1), 300)
-          }
+        if (currentInfo.currentSong?.type === 'battle') {
+          await handleBattleChoice('A')
         }
       } else if (e.key === 'o' || e.key === 'O') {
         e.preventDefault()
-        if (currentSong?.type === 'battle') {
-          setBattleChoices((prev) => ({ ...(prev ?? {}), [_currentIndex]: 'B' }))
-          if (_currentIndex < _songs.length - 1) {
-            setTimeout(() => setCurrentIndex(_currentIndex + 1), 300)
-          }
+        if (currentInfo.currentSong?.type === 'battle') {
+          await handleBattleChoice('B')
         }
       } else if (e.key === 'Backspace') {
         e.preventDefault()
-        if (_currentIndex > 0) {
-          setCurrentIndex(_currentIndex - 1)
-        }
+        await handleGoBack()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [_currentIndex, _songs.length, currentSong, _battleChoices, modalOpen, setCurrentIndex, setBattleChoices])
+  }, [currentInfo, modalOpen, handleAdvance, handleGoBack, handleBattleChoice])
 
-  const openWinnersModal = (songIndex: number) => {
+  const openWinnersModal = async (songIndex: number) => {
     setSelectedSongIndex(songIndex)
-    setModalOpen(true)
-  }
-
-  const handleReset = () => {
-    setCurrentIndex(0)
-    setBattleChoices({})
-  }
-
-  const getRevealedSongsUpTo = (songIndex: number): Set<string> => {
-    const revealed = new Set<string>()
-    for (let i = 0; i <= songIndex; i++) {
-      const song = songsWithBattleResults[i]
-      if (!song) continue
-      if (song.type === 'fixed') {
-        revealed.add(song.name)
-      } else if (song.type === 'battle' && song.selected) {
-        const selectedOptions = song.selected === 'A' ? song.optionA : song.optionB
-        if (Array.isArray(selectedOptions)) {
-          selectedOptions.forEach(songName => revealed.add(songName))
-        }
-      }
+    try {
+      const winners = await api.getWinningCardsForSong(songIndex)
+      setWinningCards(winners)
+      setModalOpen(true)
+    } catch (err) {
+      console.error('Failed to load winners:', err)
     }
-    return revealed
   }
 
-  const selectedWins = selectedSongIndex !== null ? winsPerSong.get(selectedSongIndex) : null
-  const revealedSongs = selectedSongIndex !== null ? getRevealedSongsUpTo(selectedSongIndex) : new Set<string>()
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-8">
+        <Card className="p-8 max-w-md text-center">
+          <MusicNote size={48} className="mx-auto mb-4 text-muted-foreground animate-pulse" />
+          <h2 className="text-2xl font-semibold mb-2">Loading...</h2>
+        </Card>
+      </div>
+    )
+  }
 
-  if (_songs.length === 0) {
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-8">
+        <Card className="p-8 max-w-md text-center">
+          <MusicNote size={48} className="mx-auto mb-4 text-destructive" />
+          <h2 className="text-2xl font-semibold mb-2">Error</h2>
+          <p className="text-muted-foreground">{error}</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Retry
+          </Button>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!gameState || !currentInfo || gameState.songs.length === 0) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-8">
         <Card className="p-8 max-w-md text-center">
@@ -190,245 +197,229 @@ function App() {
     )
   }
 
-  const playedSongs = _songs.slice(0, _currentIndex + 1).map((song, idx) => {
-    if (song.type === 'fixed') {
-      return { index: idx, name: song.name, type: 'fixed' as const }
-    } else if (song.type === 'battle' && _battleChoices[idx]) {
-      const selectedSongs = _battleChoices[idx] === 'A' ? song.optionA : song.optionB
-      const songName = Array.isArray(selectedSongs) ? selectedSongs.join(' + ') : String(selectedSongs)
-      return { index: idx, name: songName, type: 'battle' as const }
-    }
-    return null
-  }).filter(Boolean) as Array<{ index: number; name: string; type: 'fixed' | 'battle' }>
+  const { currentSong, nextSong, songNumber, totalSongs, progress, isComplete, wins } = currentInfo
+  const currentIndex = songNumber - 1
+
+  const revealedSongs = new Set(winningCards?.revealedSongs ?? [])
 
   return (
     <div className="min-h-screen bg-background text-foreground p-8">
       <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_300px] gap-6">
         <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <MusicNote size={32} weight="fill" className="text-primary" />
-            <h1 className="text-2xl font-bold">Small Strings vs The Audience</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Keyboard size={20} />
-              <span>Space / B / O / Backspace</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <MusicNote size={32} weight="fill" className="text-primary" />
+              <h1 className="text-2xl font-bold">Small Strings vs The Audience</h1>
             </div>
-            <Button
-              onClick={handleReset}
-              variant="outline"
-              size="sm"
-              className="gap-2"
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Keyboard size={20} />
+                <span>Space / B / O / Backspace</span>
+              </div>
+              <Button
+                onClick={handleReset}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <ArrowCounterClockwise size={16} />
+                Reset
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Song {songNumber} of {totalSongs}
+              </span>
+              <span className="text-muted-foreground">{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentIndex}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
             >
-              <ArrowCounterClockwise size={16} />
-              Reset
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              Song {_currentIndex + 1} of {_songs.length}
-            </span>
-            <span className="text-muted-foreground">{Math.round(progress)}%</span>
-          </div>
-          <Progress value={progress} className="h-2" />
-        </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={_currentIndex}
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-          >
-            {currentSong?.type === 'fixed' ? (
-              <Card className="p-8 relative overflow-hidden">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">
-                      Current Song
+              {currentSong?.type === 'fixed' ? (
+                <Card className="p-8 relative overflow-hidden">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">
+                        Current Song
+                      </div>
+                      <h2 className="text-6xl font-bold tracking-tight mb-1">
+                        {currentSong.name}
+                      </h2>
                     </div>
-                    <h2 className="text-6xl font-bold tracking-tight mb-1">
-                      {currentSong.name}
-                    </h2>
+                    {wins && (wins.line > 0 || wins.fullhouse > 0) && (
+                      <div 
+                        className="flex flex-col gap-2 cursor-pointer"
+                        onClick={() => openWinnersModal(currentIndex)}
+                      >
+                        {wins.line > 0 && (
+                          <Badge className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors">
+                            <Trophy size={20} weight="fill" className="mr-2" />
+                            {wins.line} Line{wins.line !== 1 ? 's' : ''}
+                          </Badge>
+                        )}
+                        {wins.fullhouse > 0 && (
+                          <Badge className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors">
+                            <Trophy size={20} weight="fill" className="mr-2" />
+                            {wins.fullhouse} Full House{wins.fullhouse !== 1 ? 's' : ''}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  {winsPerSong.get(_currentIndex) && (
-                    <div 
-                      className="flex flex-col gap-2 cursor-pointer"
-                      onClick={() => openWinnersModal(_currentIndex)}
+                  <div className="absolute bottom-4 right-8 text-muted-foreground text-sm">
+                    Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
+                  </div>
+                </Card>
+              ) : currentSong?.type === 'battle' ? (
+                <div className="space-y-4">
+                  <div className="text-sm text-muted-foreground uppercase tracking-wide text-center">
+                    {currentSong.selected ? 'Battle Result' : 'Song Battle'}
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleBattleChoice('A')}
                     >
-                      {winsPerSong.get(_currentIndex)!.line > 0 && (
+                      <Card 
+                        className={`p-8 cursor-pointer transition-all duration-200 relative ${
+                          currentSong.selected === 'A' 
+                            ? 'ring-4 ring-[var(--battle-blue)] bg-[var(--battle-blue)]/10' 
+                            : currentSong.selected === 'B'
+                            ? 'opacity-40'
+                            : 'hover:bg-[var(--battle-blue)]/5'
+                        }`}
+                        style={{
+                          borderColor: currentSong.selected === 'A' ? 'var(--battle-blue)' : undefined
+                        }}
+                      >
+                        <div className="text-sm uppercase tracking-wide mb-3" style={{ color: 'var(--battle-blue)' }}>
+                          Option B (Black)
+                        </div>
+                        <div className="space-y-2 mb-4">
+                          {(Array.isArray(currentSong.optionA) ? currentSong.optionA : [currentSong.optionA]).map((songName, idx) => (
+                            <h3 key={idx} className="text-3xl font-bold">{songName}</h3>
+                          ))}
+                        </div>
+                        {!currentSong.selected && (
+                          <div className="text-muted-foreground text-sm">
+                            Press <kbd className="px-2 py-1 bg-muted rounded">B</kbd>
+                          </div>
+                        )}
+                        {currentSong.selected === 'A' && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="absolute top-4 right-4"
+                          >
+                            <Trophy size={32} weight="fill" style={{ color: 'var(--battle-blue)' }} />
+                          </motion.div>
+                        )}
+                      </Card>
+                    </motion.div>
+
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleBattleChoice('B')}
+                    >
+                      <Card 
+                        className={`p-8 cursor-pointer transition-all duration-200 relative ${
+                          currentSong.selected === 'B' 
+                            ? 'ring-4 ring-[var(--battle-orange)] bg-[var(--battle-orange)]/10' 
+                            : currentSong.selected === 'A'
+                            ? 'opacity-40'
+                            : 'hover:bg-[var(--battle-orange)]/5'
+                        }`}
+                        style={{
+                          borderColor: currentSong.selected === 'B' ? 'var(--battle-orange)' : undefined
+                        }}
+                      >
+                        <div className="text-sm uppercase tracking-wide mb-3" style={{ color: 'var(--battle-orange)' }}>
+                          Option O (Orange)
+                        </div>
+                        <div className="space-y-2 mb-4">
+                          {(Array.isArray(currentSong.optionB) ? currentSong.optionB : [currentSong.optionB]).map((songName, idx) => (
+                            <h3 key={idx} className="text-3xl font-bold">{songName}</h3>
+                          ))}
+                        </div>
+                        {!currentSong.selected && (
+                          <div className="text-muted-foreground text-sm">
+                            Press <kbd className="px-2 py-1 bg-muted rounded">O</kbd>
+                          </div>
+                        )}
+                        {currentSong.selected === 'B' && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="absolute top-4 right-4"
+                          >
+                            <Trophy size={32} weight="fill" style={{ color: 'var(--battle-orange)' }} />
+                          </motion.div>
+                        )}
+                      </Card>
+                    </motion.div>
+                  </div>
+                  {currentSong.selected && (
+                    <div className="text-center text-muted-foreground text-sm">
+                      Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
+                    </div>
+                  )}
+                  {wins && currentSong.selected && (wins.line > 0 || wins.fullhouse > 0) && (
+                    <div 
+                      className="flex justify-center gap-4 cursor-pointer"
+                      onClick={() => openWinnersModal(currentIndex)}
+                    >
+                      {wins.line > 0 && (
                         <Badge className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors">
                           <Trophy size={20} weight="fill" className="mr-2" />
-                          {winsPerSong.get(_currentIndex)!.line} Line{winsPerSong.get(_currentIndex)!.line !== 1 ? 's' : ''}
+                          {wins.line} Line{wins.line !== 1 ? 's' : ''}
                         </Badge>
                       )}
-                      {winsPerSong.get(_currentIndex)!.fullhouse > 0 && (
+                      {wins.fullhouse > 0 && (
                         <Badge className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors">
                           <Trophy size={20} weight="fill" className="mr-2" />
-                          {winsPerSong.get(_currentIndex)!.fullhouse} Full House{winsPerSong.get(_currentIndex)!.fullhouse !== 1 ? 's' : ''}
+                          {wins.fullhouse} Full House{wins.fullhouse !== 1 ? 's' : ''}
                         </Badge>
                       )}
                     </div>
                   )}
                 </div>
-                <div className="absolute bottom-4 right-8 text-muted-foreground text-sm">
-                  Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
-                </div>
-              </Card>
-            ) : currentSong?.type === 'battle' ? (
-              <div className="space-y-4">
-                <div className="text-sm text-muted-foreground uppercase tracking-wide text-center">
-                  {_battleChoices[_currentIndex] ? 'Battle Result' : 'Song Battle'}
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => {
-                      setBattleChoices((prev) => ({ ...(prev ?? {}), [_currentIndex]: 'A' }))
-                      if (_currentIndex < _songs.length - 1) {
-                        setTimeout(() => setCurrentIndex(_currentIndex + 1), 300)
-                      }
-                    }}
-                  >
-                    <Card 
-                      className={`p-8 cursor-pointer transition-all duration-200 relative ${
-                        _battleChoices[_currentIndex] === 'A' 
-                          ? 'ring-4 ring-[var(--battle-blue)] bg-[var(--battle-blue)]/10' 
-                          : _battleChoices[_currentIndex] === 'B'
-                          ? 'opacity-40'
-                          : 'hover:bg-[var(--battle-blue)]/5'
-                      }`}
-                      style={{
-                        borderColor: _battleChoices[_currentIndex] === 'A' ? 'var(--battle-blue)' : undefined
-                      }}
-                    >
-                      <div className="text-sm uppercase tracking-wide mb-3" style={{ color: 'var(--battle-blue)' }}>
-                        Option B (Black)
-                      </div>
-                      <div className="space-y-2 mb-4">
-                        {(Array.isArray(currentSong.optionA) ? currentSong.optionA : [currentSong.optionA]).map((songName, idx) => (
-                          <h3 key={idx} className="text-3xl font-bold">{songName}</h3>
-                        ))}
-                      </div>
-                      {!_battleChoices[_currentIndex] && (
-                        <div className="text-muted-foreground text-sm">
-                          Press <kbd className="px-2 py-1 bg-muted rounded">B</kbd>
-                        </div>
-                      )}
-                      {_battleChoices[_currentIndex] === 'A' && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="absolute top-4 right-4"
-                        >
-                          <Trophy size={32} weight="fill" style={{ color: 'var(--battle-blue)' }} />
-                        </motion.div>
-                      )}
-                    </Card>
-                  </motion.div>
+              ) : null}
+            </motion.div>
+          </AnimatePresence>
 
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => {
-                      setBattleChoices((prev) => ({ ...(prev ?? {}), [_currentIndex]: 'B' }))
-                      if (_currentIndex < _songs.length - 1) {
-                        setTimeout(() => setCurrentIndex(_currentIndex + 1), 300)
-                      }
-                    }}
-                  >
-                    <Card 
-                      className={`p-8 cursor-pointer transition-all duration-200 relative ${
-                        _battleChoices[_currentIndex] === 'B' 
-                          ? 'ring-4 ring-[var(--battle-orange)] bg-[var(--battle-orange)]/10' 
-                          : _battleChoices[_currentIndex] === 'A'
-                          ? 'opacity-40'
-                          : 'hover:bg-[var(--battle-orange)]/5'
-                      }`}
-                      style={{
-                        borderColor: _battleChoices[_currentIndex] === 'B' ? 'var(--battle-orange)' : undefined
-                      }}
-                    >
-                      <div className="text-sm uppercase tracking-wide mb-3" style={{ color: 'var(--battle-orange)' }}>
-                        Option O (Orange)
-                      </div>
-                      <div className="space-y-2 mb-4">
-                        {(Array.isArray(currentSong.optionB) ? currentSong.optionB : [currentSong.optionB]).map((songName, idx) => (
-                          <h3 key={idx} className="text-3xl font-bold">{songName}</h3>
-                        ))}
-                      </div>
-                      {!_battleChoices[_currentIndex] && (
-                        <div className="text-muted-foreground text-sm">
-                          Press <kbd className="px-2 py-1 bg-muted rounded">O</kbd>
-                        </div>
-                      )}
-                      {_battleChoices[_currentIndex] === 'B' && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="absolute top-4 right-4"
-                        >
-                          <Trophy size={32} weight="fill" style={{ color: 'var(--battle-orange)' }} />
-                        </motion.div>
-                      )}
-                    </Card>
-                  </motion.div>
-                </div>
-                {_battleChoices[_currentIndex] && (
-                  <div className="text-center text-muted-foreground text-sm">
-                    Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
-                  </div>
-                )}
-                {winsPerSong.get(_currentIndex) && _battleChoices[_currentIndex] && (
-                  <div 
-                    className="flex justify-center gap-4 cursor-pointer"
-                    onClick={() => openWinnersModal(_currentIndex)}
-                  >
-                    {winsPerSong.get(_currentIndex)!.line > 0 && (
-                      <Badge className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors">
-                        <Trophy size={20} weight="fill" className="mr-2" />
-                        {winsPerSong.get(_currentIndex)!.line} Line{winsPerSong.get(_currentIndex)!.line !== 1 ? 's' : ''}
-                      </Badge>
-                    )}
-                    {winsPerSong.get(_currentIndex)!.fullhouse > 0 && (
-                      <Badge className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors">
-                        <Trophy size={20} weight="fill" className="mr-2" />
-                        {winsPerSong.get(_currentIndex)!.fullhouse} Full House{winsPerSong.get(_currentIndex)!.fullhouse !== 1 ? 's' : ''}
-                      </Badge>
-                    )}
-                  </div>
-                )}
+          {nextSong && (
+            <Card className="p-4 bg-secondary/50">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                Next Up
               </div>
-            ) : null}
-          </motion.div>
-        </AnimatePresence>
+              <div className="text-lg font-medium">
+                {nextSong.type === 'fixed' 
+                  ? nextSong.name 
+                  : `Battle: ${(Array.isArray(nextSong.optionA) ? nextSong.optionA : [nextSong.optionA]).join(' + ')} vs ${(Array.isArray(nextSong.optionB) ? nextSong.optionB : [nextSong.optionB]).join(' + ')}`
+                }
+              </div>
+            </Card>
+          )}
 
-        {nextSong && (
-          <Card className="p-4 bg-secondary/50">
-            <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-              Next Up
-            </div>
-            <div className="text-lg font-medium">
-              {nextSong.type === 'fixed' 
-                ? nextSong.name 
-                : `Battle: ${(Array.isArray(nextSong.optionA) ? nextSong.optionA : [nextSong.optionA]).join(' + ')} vs ${(Array.isArray(nextSong.optionB) ? nextSong.optionB : [nextSong.optionB]).join(' + ')}`
-              }
-            </div>
-          </Card>
-        )}
-
-        {_currentIndex === _songs.length - 1 && (
-          <Card className="p-6 text-center bg-accent/10 border-accent">
-            <Trophy size={48} weight="fill" className="mx-auto mb-3 text-accent" />
-            <h3 className="text-xl font-bold text-accent">Show Complete!</h3>
-          </Card>
-        )}
+          {isComplete && (
+            <Card className="p-6 text-center bg-accent/10 border-accent">
+              <Trophy size={48} weight="fill" className="mx-auto mb-3 text-accent" />
+              <h3 className="text-xl font-bold text-accent">Show Complete!</h3>
+            </Card>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -439,61 +430,64 @@ function App() {
             </div>
             <ScrollArea className="h-[calc(100vh-200px)]">
               <div className="space-y-2 pr-4">
-                {playedSongs.length === 0 ? (
+                {gameState.playedSongs.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
                     No songs played yet
                   </p>
                 ) : (
-                  playedSongs.map((song) => (
-                    <div
-                      key={song.index}
-                      className={`p-3 rounded-lg border transition-colors ${
-                        song.index === _currentIndex
-                          ? 'bg-primary/10 border-primary'
-                          : 'bg-secondary/30 border-border'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">
-                            {song.name}
+                  gameState.playedSongs.map((song) => {
+                    const songWins = gameState.winsPerSong[song.index]
+                    return (
+                      <div
+                        key={song.index}
+                        className={`p-3 rounded-lg border transition-colors ${
+                          song.index === currentIndex
+                            ? 'bg-primary/10 border-primary'
+                            : 'bg-secondary/30 border-border'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">
+                              {song.name}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-muted-foreground">
+                                #{song.index + 1}
+                              </span>
+                              {song.type === 'battle' && (
+                                <Badge variant="outline" className="text-xs px-1.5 py-0">
+                                  Battle
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-muted-foreground">
-                              #{song.index + 1}
-                            </span>
-                            {song.type === 'battle' && (
-                              <Badge variant="outline" className="text-xs px-1.5 py-0">
-                                Battle
-                              </Badge>
-                            )}
-                          </div>
+                          {songWins && (songWins.line > 0 || songWins.fullhouse > 0) && (
+                            <div className="flex flex-col gap-1">
+                              {songWins.line > 0 && (
+                                <Badge 
+                                  className="bg-accent/50 text-accent-foreground text-xs px-1.5 py-0 cursor-pointer hover:bg-accent/70"
+                                  onClick={() => openWinnersModal(song.index)}
+                                >
+                                  <Trophy size={12} weight="fill" className="mr-1" />
+                                  {songWins.line}L
+                                </Badge>
+                              )}
+                              {songWins.fullhouse > 0 && (
+                                <Badge 
+                                  className="bg-accent/50 text-accent-foreground text-xs px-1.5 py-0 cursor-pointer hover:bg-accent/70"
+                                  onClick={() => openWinnersModal(song.index)}
+                                >
+                                  <Trophy size={12} weight="fill" className="mr-1" />
+                                  {songWins.fullhouse}FH
+                                </Badge>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        {winsPerSong.get(song.index) && (
-                          <div className="flex flex-col gap-1">
-                            {winsPerSong.get(song.index)!.line > 0 && (
-                              <Badge 
-                                className="bg-accent/50 text-accent-foreground text-xs px-1.5 py-0 cursor-pointer hover:bg-accent/70"
-                                onClick={() => openWinnersModal(song.index)}
-                              >
-                                <Trophy size={12} weight="fill" className="mr-1" />
-                                {winsPerSong.get(song.index)!.line}L
-                              </Badge>
-                            )}
-                            {winsPerSong.get(song.index)!.fullhouse > 0 && (
-                              <Badge 
-                                className="bg-accent/50 text-accent-foreground text-xs px-1.5 py-0 cursor-pointer hover:bg-accent/70"
-                                onClick={() => openWinnersModal(song.index)}
-                              >
-                                <Trophy size={12} weight="fill" className="mr-1" />
-                                {winsPerSong.get(song.index)!.fullhouse}FH
-                              </Badge>
-                            )}
-                          </div>
-                        )}
                       </div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </ScrollArea>
@@ -507,14 +501,14 @@ function App() {
             <DialogTitle className="flex items-center gap-2">
               <Trophy size={24} weight="fill" className="text-accent" />
               Winning Cards
-              {selectedSongIndex !== null && _songs[selectedSongIndex] && (
+              {selectedSongIndex !== null && gameState.songs[selectedSongIndex] && (
                 <span className="text-muted-foreground font-normal">
-                  — {_songs[selectedSongIndex].type === 'fixed' 
-                    ? _songs[selectedSongIndex].name 
-                    : `${_songs[selectedSongIndex].type === 'battle' && _battleChoices[selectedSongIndex]
-                        ? (_battleChoices[selectedSongIndex] === 'A' 
-                          ? (Array.isArray(_songs[selectedSongIndex].optionA) ? _songs[selectedSongIndex].optionA : [_songs[selectedSongIndex].optionA]).join(' + ')
-                          : (Array.isArray(_songs[selectedSongIndex].optionB) ? _songs[selectedSongIndex].optionB : [_songs[selectedSongIndex].optionB]).join(' + '))
+                  — {gameState.songs[selectedSongIndex].type === 'fixed' 
+                    ? gameState.songs[selectedSongIndex].name 
+                    : `${gameState.songs[selectedSongIndex].type === 'battle' && gameState.battleChoices[selectedSongIndex]
+                        ? (gameState.battleChoices[selectedSongIndex] === 'A' 
+                          ? (Array.isArray((gameState.songs[selectedSongIndex] as any).optionA) ? (gameState.songs[selectedSongIndex] as any).optionA : [(gameState.songs[selectedSongIndex] as any).optionA]).join(' + ')
+                          : (Array.isArray((gameState.songs[selectedSongIndex] as any).optionB) ? (gameState.songs[selectedSongIndex] as any).optionB : [(gameState.songs[selectedSongIndex] as any).optionB]).join(' + '))
                         : 'Battle'
                       }`
                   }
@@ -524,46 +518,40 @@ function App() {
           </DialogHeader>
           <ScrollArea className="max-h-[60vh] pr-4">
             <div className="space-y-6">
-              {selectedWins && selectedWins.line > 0 && (
+              {winningCards && winningCards.lineWinners.length > 0 && (
                 <div>
                   <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
                     <Badge className="bg-accent text-accent-foreground">
-                      {selectedWins.line} Line Win{selectedWins.line !== 1 ? 's' : ''}
+                      {winningCards.lineWinners.length} Line Win{winningCards.lineWinners.length !== 1 ? 's' : ''}
                     </Badge>
                   </h4>
                   <div className="grid sm:grid-cols-2 gap-4">
-                    {selectedWins.lineWinners.map(cardId => {
-                      const card = _bingoCards.find(c => c.id === cardId)
-                      return card ? (
-                        <BingoCardDisplay key={cardId} card={card} revealedSongs={revealedSongs} />
-                      ) : null
-                    })}
+                    {winningCards.lineWinners.map(card => (
+                      <BingoCardDisplay key={card.id} card={card} revealedSongs={revealedSongs} />
+                    ))}
                   </div>
                 </div>
               )}
               
-              {selectedWins && selectedWins.fullhouse > 0 && (
+              {winningCards && winningCards.fullhouseWinners.length > 0 && (
                 <>
-                  {selectedWins.line > 0 && <Separator />}
+                  {winningCards.lineWinners.length > 0 && <Separator />}
                   <div>
                     <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
                       <Badge className="bg-accent text-accent-foreground">
-                        {selectedWins.fullhouse} Full House{selectedWins.fullhouse !== 1 ? 's' : ''}
+                        {winningCards.fullhouseWinners.length} Full House{winningCards.fullhouseWinners.length !== 1 ? 's' : ''}
                       </Badge>
                     </h4>
                     <div className="grid sm:grid-cols-2 gap-4">
-                      {selectedWins.fullhouseWinners.map(cardId => {
-                        const card = _bingoCards.find(c => c.id === cardId)
-                        return card ? (
-                          <BingoCardDisplay key={cardId} card={card} revealedSongs={revealedSongs} />
-                        ) : null
-                      })}
+                      {winningCards.fullhouseWinners.map(card => (
+                        <BingoCardDisplay key={card.id} card={card} revealedSongs={revealedSongs} />
+                      ))}
                     </div>
                   </div>
                 </>
               )}
 
-              {(!selectedWins || (selectedWins.line === 0 && selectedWins.fullhouse === 0)) && (
+              {(!winningCards || (winningCards.lineWinners.length === 0 && winningCards.fullhouseWinners.length === 0)) && (
                 <div className="text-center py-8 text-muted-foreground">
                   No winners at this song
                 </div>

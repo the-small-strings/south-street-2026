@@ -27,3 +27,35 @@ export interface BingoWin {
   type: 'line' | 'fullhouse'
   wonAtSongIndex: number
 }
+
+export interface BingoWins {
+  line: number
+  fullhouse: number
+  lineWinners: number[]
+  fullhouseWinners: number[]
+}
+
+export interface GameState {
+  songs: Song[]
+  bingoCards: BingoCard[]
+  currentIndex: number
+  battleChoices: Record<number, 'A' | 'B'>
+  winsPerSong: Record<number, BingoWins>
+  playedSongs: PlayedSong[]
+}
+
+export interface PlayedSong {
+  index: number
+  name: string
+  type: 'fixed' | 'battle'
+}
+
+export interface CurrentSongInfo {
+  currentSong: Song | null
+  nextSong: Song | null
+  songNumber: number
+  totalSongs: number
+  progress: number
+  isComplete: boolean
+  wins: BingoWins | null
+}
