@@ -162,10 +162,10 @@ body.message #message-container text {
 
 @keyframes logo-grow {
   0% {
-    transform: scale(0.5);
+    transform: scale(0.5) rotate(0deg);
   }
   100% {
-    transform: scale(1);
+    transform: scale(1) rotate(360deg);
   }
 }
 
