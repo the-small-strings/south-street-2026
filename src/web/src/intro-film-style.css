@@ -140,6 +140,19 @@ body.message #message-container text {
   animation-delay: 18.5s;
 }
 
+#logo-container-outer .intro-logo-orange {
+  position: absolute;
+  opacity: 0;
+  animation: logo-grow 2s ease-in-out forwards, logo-orange-fade-in 2s ease-in-out forwards;
+  animation-delay: 18.5s, 68s;
+}
+
+@keyframes logo-orange-fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+
 @keyframes logo-grow {
   0% {
     max-width: 60%;

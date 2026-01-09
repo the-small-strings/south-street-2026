@@ -51,9 +51,10 @@ export function IntroScreenFilmStyle() {
             <img src="/logo/black with white.png" alt="Logo" className="intro-logo" />
           </div>
         </div>
-          <div id="logo-container-outer">
-            <img src="/logo/black with white.png" alt="Logo" className="intro-logo" />
-          </div>
+        <div id="logo-container-outer">
+          <img src="/logo/black with white.png" alt="Logo" className="intro-logo" />
+          <img src="/logo/black with orange.png" alt="Logo" className="intro-logo intro-logo-orange" />
+        </div>
       </div>}
 
     </>
