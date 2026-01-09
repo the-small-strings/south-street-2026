@@ -4,8 +4,18 @@ import type { CurrentSongInfo } from '@/lib/types'
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
-export function useSocket(onGameStateUpdate?: (info: CurrentSongInfo) => void) {
+interface UseSocketOptions {
+  onGameStateUpdate?: (info: CurrentSongInfo) => void
+  onSkipReveal?: () => void
+}
+
+export function useSocket(optionsOrCallback?: UseSocketOptions | ((info: CurrentSongInfo) => void)) {
   const socketRef = useRef<Socket | null>(null)
+  
+  // Support both old callback style and new options style
+  const options: UseSocketOptions = typeof optionsOrCallback === 'function' 
+    ? { onGameStateUpdate: optionsOrCallback }
+    : optionsOrCallback ?? {}
 
   const connect = useCallback(() => {
     if (socketRef.current?.connected) return
@@ -22,17 +32,27 @@ export function useSocket(onGameStateUpdate?: (info: CurrentSongInfo) => void) {
       console.log('Socket disconnected')
     })
 
-    if (onGameStateUpdate) {
-      socketRef.current.on('gameStateUpdate', onGameStateUpdate)
+    if (options.onGameStateUpdate) {
+      socketRef.current.on('gameStateUpdate', options.onGameStateUpdate)
+    }
+
+    if (options.onSkipReveal) {
+      socketRef.current.on('skipReveal', options.onSkipReveal)
     }
 
     return socketRef.current
-  }, [onGameStateUpdate])
+  }, [options.onGameStateUpdate, options.onSkipReveal])
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {
       socketRef.current.disconnect()
       socketRef.current = null
+    }
+  }, [])
+
+  const emitSkipReveal = useCallback(() => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('skipReveal')
     }
   }, [])
 
@@ -45,5 +65,6 @@ export function useSocket(onGameStateUpdate?: (info: CurrentSongInfo) => void) {
     socket: socketRef.current,
     connect,
     disconnect,
+    emitSkipReveal,
   }
 }

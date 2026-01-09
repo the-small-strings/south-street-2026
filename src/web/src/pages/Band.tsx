@@ -10,6 +10,7 @@ import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise } from '
 import { motion, AnimatePresence } from 'framer-motion'
 import type { BingoCard, GameState, CurrentSongInfo } from '@/lib/types'
 import { BingoCardDisplay } from '@/components/BingoCardDisplay'
+import { useSocket } from '@/hooks/use-socket'
 import * as api from '@/lib/api'
 
 export function Band() {
@@ -17,6 +18,7 @@ export function Band() {
 	const [currentInfo, setCurrentInfo] = useState<CurrentSongInfo | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
+	const [songRevealed, setSongRevealed] = useState(false)
 
 	const [modalOpen, setModalOpen] = useState(false)
 	const [selectedSongIndex, setSelectedSongIndex] = useState<number | null>(null)
@@ -28,6 +30,19 @@ export function Band() {
 	} | null>(null)
 
 	const currentSongRef = useRef<HTMLDivElement>(null)
+	
+	// Socket for emitting skip reveal
+	const { emitSkipReveal } = useSocket()
+
+	// Auto-reveal song after delay (matching FixedSongDisplay's REVEAL_DELAY_MS)
+	useEffect(() => {
+		if (currentInfo?.pageType === 'song' && currentInfo?.currentSong?.type === 'fixed' && !songRevealed) {
+			const timer = setTimeout(() => {
+				setSongRevealed(true)
+			}, 5000)
+			return () => clearTimeout(timer)
+		}
+	}, [currentInfo?.pageType, currentInfo?.currentSong?.type, currentInfo?.songNumber, songRevealed])
 
 	// Load initial state
 	useEffect(() => {
@@ -63,6 +78,7 @@ export function Band() {
 		try {
 			const newInfo = await api.advanceToNextSong()
 			setCurrentInfo(newInfo)
+			setSongRevealed(false)
 			await refreshState()
 		} catch (err) {
 			console.error('Failed to advance:', err)
@@ -73,6 +89,7 @@ export function Band() {
 		try {
 			const newInfo = await api.goToPreviousSong()
 			setCurrentInfo(newInfo)
+			setSongRevealed(false)
 			await refreshState()
 		} catch (err) {
 			console.error('Failed to go back:', err)
@@ -130,7 +147,13 @@ export function Band() {
 				
 				// Song page - check if we can advance
 				if (currentSong?.type === 'fixed') {
-					await handleAdvance()
+					// First press: skip reveal delay, second press: advance
+					if (!songRevealed) {
+						emitSkipReveal()
+						setSongRevealed(true)
+					} else {
+						await handleAdvance()
+					}
 				} else if (currentSong?.type === 'battle' && currentSong.selected) {
 					await handleAdvance()
 				}
@@ -152,7 +175,7 @@ export function Band() {
 
 		window.addEventListener('keydown', handleKeyDown)
 		return () => window.removeEventListener('keydown', handleKeyDown)
-	}, [currentInfo, modalOpen, handleAdvance, handleGoBack, handleBattleChoice])
+	}, [currentInfo, modalOpen, handleAdvance, handleGoBack, handleBattleChoice, songRevealed, emitSkipReveal])
 
 	// Scroll current song into view
 	useEffect(() => {

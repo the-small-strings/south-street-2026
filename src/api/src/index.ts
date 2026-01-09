@@ -46,6 +46,13 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });
+
+  // Handle skip reveal request from band view
+  socket.on('skipReveal', () => {
+    console.log('Skip reveal requested by:', socket.id);
+    // Broadcast to all clients (including audience)
+    io.emit('skipReveal');
+  });
 });
 
 // Start server

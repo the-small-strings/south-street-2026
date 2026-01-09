@@ -13,14 +13,25 @@ import { EndScreen } from './audience/EndScreen'
 export function Audience() {
   const [currentInfo, setCurrentInfo] = useState<CurrentSongInfo | null>(null)
   const [loading, setLoading] = useState(true)
+  const [skipRevealTriggered, setSkipRevealTriggered] = useState(false)
 
   // Handle socket updates
   const handleGameStateUpdate = useCallback((info: CurrentSongInfo) => {
     setCurrentInfo(info)
+    // Reset skip reveal trigger when song changes
+    setSkipRevealTriggered(false)
+  }, [])
+
+  // Handle skip reveal request from band
+  const handleSkipReveal = useCallback(() => {
+    setSkipRevealTriggered(true)
   }, [])
 
   // Connect to socket
-  useSocket(handleGameStateUpdate)
+  useSocket({
+    onGameStateUpdate: handleGameStateUpdate,
+    onSkipReveal: handleSkipReveal,
+  })
 
   // Load initial state
   useEffect(() => {
@@ -67,7 +78,11 @@ export function Audience() {
         {pageType === 'end' && <EndScreen key="end" />}
         {pageType === 'song' && currentSong && (
           currentSong.type === 'fixed' ? (
-            <FixedSongDisplay key={`fixed-${songNumber}`} name={currentSong.name} />
+            <FixedSongDisplay 
+              key={`fixed-${songNumber}`} 
+              name={currentSong.name} 
+              skipRevealTriggered={skipRevealTriggered}
+            />
           ) : (
             <BattleSongDisplay
               key={`battle-${songNumber}`}
