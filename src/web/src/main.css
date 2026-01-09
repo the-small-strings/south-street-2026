@@ -201,3 +201,9 @@
 .battle-list .audience-song-title:not(:first-child) {
   margin-top: 130px;
 }
+
+
+/* uncomment this to match the logo orange for the audience view song battles */
+/* div.bg-orange-500 {
+  background-color: #F15A24;
+} */
