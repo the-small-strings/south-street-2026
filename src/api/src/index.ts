@@ -42,15 +42,16 @@ app.get('/', (req: Request, res: Response) => {
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
-  
+
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });
 });
 
 // Start server
-httpServer.listen(port, () => {
-  console.log(`⚡️ Server is running at http://localhost:${port}`);
+const host = process.env.HOST || '0.0.0.0';
+httpServer.listen({ port, host }, () => {
+  console.log(`⚡️ Server is running at http://${host}:${port}`);
 });
 
 export { io };

@@ -50,6 +50,9 @@ export interface PlayedSong {
   type: 'fixed' | 'battle'
 }
 
+
+export type PageType = 'welcome' | 'intro' | 'song' | 'end'
+
 export interface CurrentSongInfo {
   currentSong: Song | null
   nextSong: Song | null
@@ -60,4 +63,5 @@ export interface CurrentSongInfo {
   progress: number
   isComplete: boolean
   wins: BingoWins | null
+  pageType: PageType
 }

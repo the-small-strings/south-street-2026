@@ -10,6 +10,7 @@ import type {
   BingoWins,
   PlayedSong,
   CurrentSongInfo,
+  PageType,
 } from './types';
 import { calculateBingoWins, getRevealedSongsUpTo } from './bingo';
 
@@ -55,7 +56,8 @@ function parseConfigToSongs(yamlContent: string): Song[] {
 class GameStateManager {
   private songs: Song[] = [];
   private bingoCards: BingoCard[] = [];
-  private currentIndex: number = 0;
+  // Index scheme: -2 = welcome, -1 = intro, 0..n-1 = songs, n = end
+  private currentIndex: number = -2;
   private battleChoices: Record<number, 'A' | 'B'> = {};
 
   constructor() {
@@ -141,8 +143,27 @@ class GameStateManager {
 
   getCurrentSongInfo(): CurrentSongInfo {
     const normalizedSongs = this.songs.map((s) => this.normalizeSong(s));
-    const currentSong = normalizedSongs[this.currentIndex] ?? null;
-    const nextSong = normalizedSongs[this.currentIndex + 1] ?? null;
+    
+    // Determine page type based on currentIndex
+    // -2 = welcome, -1 = intro, 0..n-1 = songs, n = end
+    let pageType: PageType;
+    if (this.currentIndex === -2) {
+      pageType = 'welcome';
+    } else if (this.currentIndex === -1) {
+      pageType = 'intro';
+    } else if (this.currentIndex >= this.songs.length) {
+      pageType = 'end';
+    } else {
+      pageType = 'song';
+    }
+
+    const isSongPage = pageType === 'song';
+    const currentSong = isSongPage ? (normalizedSongs[this.currentIndex] ?? null) : null;
+    const nextSong = pageType === 'intro' 
+      ? normalizedSongs[0] ?? null
+      : isSongPage 
+        ? normalizedSongs[this.currentIndex + 1] ?? null 
+        : null;
     const winsPerSong = this.getWinsPerSong();
 
     // Add selected battle choice to current song if applicable
@@ -184,15 +205,16 @@ class GameStateManager {
     }
 
     return {
-      currentSong: currentWithSelection,
+      currentSong: isSongPage ? currentWithSelection : null,
       nextSong,
-      songNumber: this.currentIndex + 1,
+      songNumber: isSongPage ? this.currentIndex + 1 : 0,
       totalSongs: this.songs.length,
-      actualSongNumber,
+      actualSongNumber: isSongPage ? actualSongNumber : 0,
       actualTotalSongs,
-      progress: this.songs.length > 0 ? ((this.currentIndex + 1) / this.songs.length) * 100 : 0,
-      isComplete: this.currentIndex === this.songs.length - 1,
-      wins: winsPerSong[this.currentIndex] ?? null,
+      progress: this.songs.length > 0 ? (Math.max(0, this.currentIndex + 1) / this.songs.length) * 100 : 0,
+      isComplete: this.currentIndex >= this.songs.length,
+      wins: isSongPage ? (winsPerSong[this.currentIndex] ?? null) : null,
+      pageType,
     };
   }
 
@@ -254,24 +276,39 @@ class GameStateManager {
   }
 
   advanceToNext(): CurrentSongInfo {
+    // Handle special page transitions
+    // -2 = welcome -> -1 = intro
+    // -1 = intro -> 0 = first song
+    // n-1 = last song -> n = end
+    if (this.currentIndex === -2) {
+      this.currentIndex = -1;
+      return this.getCurrentSongInfo();
+    }
+
+    if (this.currentIndex === -1) {
+      this.currentIndex = 0;
+      return this.getCurrentSongInfo();
+    }
+
+    // Already at end page, can't advance further
+    if (this.currentIndex >= this.songs.length) {
+      return this.getCurrentSongInfo();
+    }
+
     const currentSong = this.songs[this.currentIndex];
 
     // Can only advance if current song is fixed, or battle with a choice made
     if (currentSong?.type === 'fixed') {
-      if (this.currentIndex < this.songs.length - 1) {
-        this.currentIndex++;
-      }
+      this.currentIndex++;
     } else if (currentSong?.type === 'battle' && this.battleChoices[this.currentIndex]) {
-      if (this.currentIndex < this.songs.length - 1) {
-        this.currentIndex++;
-      }
+      this.currentIndex++;
     }
 
     return this.getCurrentSongInfo();
   }
 
   goBack(): CurrentSongInfo {
-    if (this.currentIndex > 0) {
+    if (this.currentIndex > -2) {
       this.currentIndex--;
     }
     return this.getCurrentSongInfo();
@@ -293,7 +330,7 @@ class GameStateManager {
   }
 
   reset(): GameState {
-    this.currentIndex = 0;
+    this.currentIndex = -2; // Reset to welcome screen
     this.battleChoices = {};
     return this.getFullState();
   }

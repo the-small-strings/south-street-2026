@@ -115,10 +115,23 @@ export function Band() {
 
 			if (e.key === ' ' || e.key === 'Spacebar') {
 				e.preventDefault()
-				const currentSong = currentInfo.currentSong
-				if (currentSong?.type === 'fixed' && currentInfo.songNumber < currentInfo.totalSongs) {
+				const { pageType, currentSong } = currentInfo
+				
+				// Handle special pages - always allow advancing
+				if (pageType === 'welcome' || pageType === 'intro') {
 					await handleAdvance()
-				} else if (currentSong?.type === 'battle' && currentSong.selected && currentInfo.songNumber < currentInfo.totalSongs) {
+					return
+				}
+				
+				// Can't advance from end page
+				if (pageType === 'end') {
+					return
+				}
+				
+				// Song page - check if we can advance
+				if (currentSong?.type === 'fixed') {
+					await handleAdvance()
+				} else if (currentSong?.type === 'battle' && currentSong.selected) {
 					await handleAdvance()
 				}
 			} else if (e.key === 'b' || e.key === 'B') {
@@ -204,10 +217,20 @@ export function Band() {
 		)
 	}
 
-	const { currentSong, nextSong, songNumber, totalSongs, actualSongNumber, actualTotalSongs, progress, isComplete, wins } = currentInfo
+	const { currentSong, nextSong, songNumber, totalSongs, actualSongNumber, actualTotalSongs, progress, isComplete, wins, pageType } = currentInfo
 	const currentIndex = songNumber - 1
 
 	const revealedSongs = new Set(winningCards?.revealedSongs ?? [])
+
+	// Helper to get page label for progress display
+	const getPageLabel = () => {
+		switch (pageType) {
+			case 'welcome': return 'Welcome Screen'
+			case 'intro': return 'Intro'
+			case 'end': return 'End Screen'
+			case 'song': return `Song ${actualSongNumber} of ${actualTotalSongs}`
+		}
+	}
 
 	return (
 		<div className="min-h-screen bg-background text-foreground p-8">
@@ -215,8 +238,8 @@ export function Band() {
 				<div className="space-y-6">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-3">
-							<MusicNote size={32} weight="fill" className="text-primary" />
-							<h1 className="text-2xl font-bold">Small Strings vs The Audience</h1>
+							<img src="/logo/black with orange.png" alt="The Small Strings Logo" className="h-8 w-8 object-contain" />
+							<h1 className="text-2xl font-bold">The Small Strings vs The Audience</h1>
 						</div>
 						<div className="flex items-center gap-4">
 							<div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -238,7 +261,7 @@ export function Band() {
 					<div className="space-y-2">
 						<div className="flex items-center justify-between text-sm">
 							<span className="text-muted-foreground">
-								Song {actualSongNumber} of {actualTotalSongs}
+								{getPageLabel()}
 							</span>
 							<span className="text-muted-foreground">{Math.round(progress)}%</span>
 						</div>
@@ -247,13 +270,79 @@ export function Band() {
 
 					<AnimatePresence mode="wait">
 						<motion.div
-							key={currentIndex}
+							key={pageType === 'song' ? `song-${currentIndex}` : pageType}
 							initial={{ opacity: 0, x: 50 }}
 							animate={{ opacity: 1, x: 0 }}
 							exit={{ opacity: 0, x: -50 }}
 							transition={{ duration: 0.3, ease: 'easeOut' }}
 						>
-							{currentSong?.type === 'fixed' ? (
+							{pageType === 'welcome' ? (
+								<Card className="p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-black/10 border-orange-500/30">
+									<div className="flex items-center justify-center gap-6">
+										<img 
+											src="/logo/black with orange.png" 
+											alt="The Small Strings Logo" 
+											className="h-24 w-24 object-contain"
+										/>
+										<div className="text-center">
+											<div className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">
+												Audience View
+											</div>
+											<h2 className="text-4xl font-bold tracking-tight">
+												<span className="text-orange-500">The Small Strings</span>
+												<span className="text-muted-foreground mx-3">vs</span>
+												<span className="text-foreground">The Audience</span>
+											</h2>
+											<p className="text-lg text-muted-foreground mt-2">
+												Welcome screen is being displayed
+											</p>
+										</div>
+									</div>
+									<div className="absolute bottom-4 right-8 text-muted-foreground text-sm">
+										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
+									</div>
+								</Card>
+							) : pageType === 'intro' ? (
+								<Card className="p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/5 to-transparent border-orange-500/20">
+									<div className="flex items-center justify-center gap-6">
+										<div className="text-6xl">🎸</div>
+										<div className="text-center">
+											<div className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">
+												Audience View
+											</div>
+											<h2 className="text-4xl font-bold tracking-tight">
+												Get Ready!
+											</h2>
+											<p className="text-lg text-orange-500 mt-2">
+												The show is about to begin...
+											</p>
+										</div>
+									</div>
+									<div className="absolute bottom-4 right-8 text-muted-foreground text-sm">
+										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to start first song
+									</div>
+								</Card>
+							) : pageType === 'end' ? (
+								<Card className="p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-transparent border-orange-500/30">
+									<div className="flex items-center justify-center gap-6">
+										<div className="text-6xl">🏆</div>
+										<div className="text-center">
+											<div className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">
+												Audience View
+											</div>
+											<h2 className="text-4xl font-bold tracking-tight">
+												Thank You!
+											</h2>
+											<p className="text-lg text-orange-500 mt-2">
+												What a show!
+											</p>
+										</div>
+									</div>
+									<div className="absolute bottom-4 right-8 text-muted-foreground text-sm">
+										Show complete! Press <kbd className="px-2 py-1 bg-muted rounded">Backspace</kbd> to go back
+									</div>
+								</Card>
+							) : currentSong?.type === 'fixed' ? (
 								<Card className="p-8 relative overflow-hidden">
 									<div className="flex items-start justify-between gap-4">
 										<div className="flex-1">

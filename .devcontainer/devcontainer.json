@@ -6,6 +6,13 @@
 	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
 	"features": {
 		"ghcr.io/stuartleeks/dev-container-features/shell-history:0": {}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"Tyriar.luna-paint"
+			]
+		}
 	}
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
