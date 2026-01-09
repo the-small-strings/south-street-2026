@@ -107,6 +107,17 @@ export function Band() {
 		}
 	}, [currentInfo, refreshState])
 
+	const handleClearBattleChoice = useCallback(async () => {
+		if (!currentInfo) return
+		try {
+			const newInfo = await api.clearBattleChoice(currentInfo.songNumber - 1)
+			setCurrentInfo(newInfo)
+			await refreshState()
+		} catch (err) {
+			console.error('Failed to clear battle choice:', err)
+		}
+	}, [currentInfo, refreshState])
+
 	const handleReset = useCallback(async () => {
 		try {
 			const newState = await api.resetGame()
@@ -167,6 +178,11 @@ export function Band() {
 				if (currentInfo.currentSong?.type === 'battle') {
 					await handleBattleChoice('A')
 				}
+			} else if (e.key === 'c' || e.key === 'C') {
+				e.preventDefault()
+				if (currentInfo.currentSong?.type === 'battle' && currentInfo.currentSong.selected) {
+					await handleClearBattleChoice()
+				}
 			} else if (e.key === 'Backspace') {
 				e.preventDefault()
 				await handleGoBack()
@@ -175,7 +191,7 @@ export function Band() {
 
 		window.addEventListener('keydown', handleKeyDown)
 		return () => window.removeEventListener('keydown', handleKeyDown)
-	}, [currentInfo, modalOpen, handleAdvance, handleGoBack, handleBattleChoice, songRevealed, emitSkipReveal])
+	}, [currentInfo, modalOpen, handleAdvance, handleGoBack, handleBattleChoice, handleClearBattleChoice, songRevealed, emitSkipReveal])
 
 	// Scroll current song into view
 	useEffect(() => {

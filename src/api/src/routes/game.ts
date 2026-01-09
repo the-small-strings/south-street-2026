@@ -73,6 +73,20 @@ router.post('/battle/:songIndex', (req: Request, res: Response) => {
   res.json(result);
 });
 
+// Clear battle choice for a song
+router.delete('/battle/:songIndex', (req: Request, res: Response) => {
+  const songIndex = parseInt(req.params.songIndex, 10);
+
+  if (isNaN(songIndex)) {
+    res.status(400).json({ error: 'Invalid song index' });
+    return;
+  }
+
+  const result = gameState.clearBattleChoice(songIndex);
+  emitGameStateUpdate();
+  res.json(result);
+});
+
 // Reset the game
 router.post('/reset', (req: Request, res: Response) => {
   const result = gameState.reset();

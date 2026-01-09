@@ -329,6 +329,14 @@ class GameStateManager {
     return this.getCurrentSongInfo();
   }
 
+  clearBattleChoice(songIndex: number): CurrentSongInfo {
+    const song = this.songs[songIndex];
+    if (song?.type === 'battle') {
+      delete this.battleChoices[songIndex];
+    }
+    return this.getCurrentSongInfo();
+  }
+
   reset(): GameState {
     this.currentIndex = -2; // Reset to welcome screen
     this.battleChoices = {};

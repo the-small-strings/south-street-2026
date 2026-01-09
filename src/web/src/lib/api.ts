@@ -56,6 +56,14 @@ export async function setBattleChoice(
   });
 }
 
+export async function clearBattleChoice(
+  songIndex: number
+): Promise<CurrentSongInfo> {
+  return fetchApi<CurrentSongInfo>(`/api/game/battle/${songIndex}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function resetGame(): Promise<GameState> {
   return fetchApi<GameState>('/api/game/reset', { method: 'POST' });
 }
