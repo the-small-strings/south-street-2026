@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useSocket } from '@/hooks/use-socket'
 import type { CurrentSongInfo, BattleSong } from '@/lib/types'
 import * as api from '@/lib/api'
+import { TestScreen } from './audience/TestScreen'
 import { WelcomeScreen } from './audience/WelcomeScreen'
 import { FixedSongDisplay } from './audience/FixedSongDisplay'
 import { BattleSongDisplay } from './audience/BattleSongDisplay'
@@ -72,6 +73,7 @@ export function Audience() {
   return (
     <div className="h-screen w-screen overflow-hidden">
       <AnimatePresence mode="wait">
+        {pageType === 'test' && <TestScreen key="test" />}
         {pageType === 'welcome' && <WelcomeScreen key="welcome" />}
         {/* {pageType === 'intro' && <IntroScreenCopilot key="intro" />} */}
         {pageType === 'intro' && <IntroScreenFilmStyle key="intro" />}

@@ -56,8 +56,8 @@ function parseConfigToSongs(yamlContent: string): Song[] {
 class GameStateManager {
   private songs: Song[] = [];
   private bingoCards: BingoCard[] = [];
-  // Index scheme: -2 = welcome, -1 = intro, 0..n-1 = songs, n = end
-  private currentIndex: number = -2;
+  // Index scheme: -3 = test, -2 = welcome, -1 = intro, 0..n-1 = songs, n = end
+  private currentIndex: number = -3;
   private battleChoices: Record<number, 'A' | 'B'> = {};
 
   constructor() {
@@ -145,9 +145,11 @@ class GameStateManager {
     const normalizedSongs = this.songs.map((s) => this.normalizeSong(s));
     
     // Determine page type based on currentIndex
-    // -2 = welcome, -1 = intro, 0..n-1 = songs, n = end
+    // -3 = test, -2 = welcome, -1 = intro, 0..n-1 = songs, n = end
     let pageType: PageType;
-    if (this.currentIndex === -2) {
+    if (this.currentIndex === -3) {
+      pageType = 'test';
+    } else if (this.currentIndex === -2) {
       pageType = 'welcome';
     } else if (this.currentIndex === -1) {
       pageType = 'intro';
@@ -277,9 +279,15 @@ class GameStateManager {
 
   advanceToNext(): CurrentSongInfo {
     // Handle special page transitions
+    // -3 = test -> -2 = welcome
     // -2 = welcome -> -1 = intro
     // -1 = intro -> 0 = first song
     // n-1 = last song -> n = end
+    if (this.currentIndex === -3) {
+      this.currentIndex = -2;
+      return this.getCurrentSongInfo();
+    }
+
     if (this.currentIndex === -2) {
       this.currentIndex = -1;
       return this.getCurrentSongInfo();
@@ -308,7 +316,7 @@ class GameStateManager {
   }
 
   goBack(): CurrentSongInfo {
-    if (this.currentIndex > -2) {
+    if (this.currentIndex > -3) {
       this.currentIndex--;
     }
     return this.getCurrentSongInfo();
@@ -338,7 +346,7 @@ class GameStateManager {
   }
 
   reset(): GameState {
-    this.currentIndex = -2; // Reset to welcome screen
+    this.currentIndex = -3; // Reset to test screen
     this.battleChoices = {};
     return this.getFullState();
   }

@@ -53,6 +53,13 @@ io.on('connection', (socket) => {
     // Broadcast to all clients (including audience)
     io.emit('skipReveal');
   });
+
+  // Handle test key press from band view test screen
+  socket.on('testKeyPress', (key: string) => {
+    console.log('Test key pressed:', key, 'by:', socket.id);
+    // Broadcast to all clients (for audience to display)
+    io.emit('testKeyPress', key);
+  });
 });
 
 // Start server

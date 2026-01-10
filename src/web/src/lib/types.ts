@@ -51,7 +51,7 @@ export interface PlayedSong {
 }
 
 
-export type PageType = 'welcome' | 'intro' | 'song' | 'end'
+export type PageType = 'test' | 'welcome' | 'intro' | 'song' | 'end'
 
 export interface CurrentSongInfo {
   currentSong: Song | null

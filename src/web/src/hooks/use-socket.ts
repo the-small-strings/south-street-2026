@@ -7,6 +7,7 @@ const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 interface UseSocketOptions {
   onGameStateUpdate?: (info: CurrentSongInfo) => void
   onSkipReveal?: () => void
+  onTestKeyPress?: (key: string) => void
 }
 
 export function useSocket(optionsOrCallback?: UseSocketOptions | ((info: CurrentSongInfo) => void)) {
@@ -16,6 +17,10 @@ export function useSocket(optionsOrCallback?: UseSocketOptions | ((info: Current
   const options: UseSocketOptions = typeof optionsOrCallback === 'function' 
     ? { onGameStateUpdate: optionsOrCallback }
     : optionsOrCallback ?? {}
+
+  // Use refs to store callbacks so socket listeners always call the latest version
+  const callbackRefs = useRef<UseSocketOptions>({})
+  callbackRefs.current = options
 
   const connect = useCallback(() => {
     if (socketRef.current?.connected) return
@@ -32,16 +37,21 @@ export function useSocket(optionsOrCallback?: UseSocketOptions | ((info: Current
       console.log('Socket disconnected')
     })
 
-    if (options.onGameStateUpdate) {
-      socketRef.current.on('gameStateUpdate', options.onGameStateUpdate)
-    }
+    // Use wrapper functions that call from refs to always get latest callback
+    socketRef.current.on('gameStateUpdate', (info: CurrentSongInfo) => {
+      callbackRefs.current.onGameStateUpdate?.(info)
+    })
 
-    if (options.onSkipReveal) {
-      socketRef.current.on('skipReveal', options.onSkipReveal)
-    }
+    socketRef.current.on('skipReveal', () => {
+      callbackRefs.current.onSkipReveal?.()
+    })
+
+    socketRef.current.on('testKeyPress', (key: string) => {
+      callbackRefs.current.onTestKeyPress?.(key)
+    })
 
     return socketRef.current
-  }, [options.onGameStateUpdate, options.onSkipReveal])
+  }, [])
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {
@@ -56,6 +66,12 @@ export function useSocket(optionsOrCallback?: UseSocketOptions | ((info: Current
     }
   }, [])
 
+  const emitTestKeyPress = useCallback((key: string) => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('testKeyPress', key)
+    }
+  }, [])
+
   useEffect(() => {
     connect()
     return () => disconnect()
@@ -66,5 +82,6 @@ export function useSocket(optionsOrCallback?: UseSocketOptions | ((info: Current
     connect,
     disconnect,
     emitSkipReveal,
+    emitTestKeyPress,
   }
 }
