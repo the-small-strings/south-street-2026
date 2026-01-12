@@ -8,14 +8,14 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { BingoCard, GameState, CurrentSongInfo } from '@/lib/types'
+import type { BingoCard, GameState, GigState } from '@/lib/types'
 import { BingoCardDisplay } from '@/components/BingoCardDisplay'
 import { useSocket } from '@/hooks/use-socket'
 import * as api from '@/lib/api'
 
 export function Band() {
 	const [gameState, setGameState] = useState<GameState | null>(null)
-	const [currentInfo, setCurrentInfo] = useState<CurrentSongInfo | null>(null)
+	const [currentInfo, setCurrentInfo] = useState<GigState | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	const [songRevealed, setSongRevealed] = useState(false)
@@ -60,7 +60,7 @@ export function Band() {
 				setLoading(true)
 				const [fullState, current] = await Promise.all([
 					api.getFullGameState(),
-					api.getCurrentSongInfo()
+					api.getCurrentGigState()
 				])
 				setGameState(fullState)
 				setCurrentInfo(current)
@@ -131,7 +131,7 @@ export function Band() {
 		try {
 			const newState = await api.resetGame()
 			setGameState(newState)
-			const newInfo = await api.getCurrentSongInfo()
+			const newInfo = await api.getCurrentGigState()
 			setCurrentInfo(newInfo)
 		} catch (err) {
 			console.error('Failed to reset:', err)

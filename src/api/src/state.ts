@@ -9,7 +9,7 @@ import type {
   GameState,
   BingoWins,
   PlayedSong,
-  CurrentSongInfo,
+  GigState,
   PageType,
 } from './types';
 import { calculateBingoWins, getRevealedSongsUpTo } from './bingo';
@@ -141,7 +141,7 @@ class GameStateManager {
     };
   }
 
-  getCurrentSongInfo(): CurrentSongInfo {
+  getCurrentGigState(): GigState {
     const normalizedSongs = this.songs.map((s) => this.normalizeSong(s));
     
     // Determine page type based on currentIndex
@@ -276,7 +276,7 @@ class GameStateManager {
     };
   }
 
-  advanceToNext(): CurrentSongInfo {
+  advanceToNext(): GigState {
     // Handle special page transitions
     // -3 = test -> -2 = welcome
     // -2 = welcome -> -1 = intro
@@ -284,22 +284,22 @@ class GameStateManager {
     // n-1 = last song -> n = end
     if (this.currentIndex === -3) {
       this.currentIndex = -2;
-      return this.getCurrentSongInfo();
+      return this.getCurrentGigState();
     }
 
     if (this.currentIndex === -2) {
       this.currentIndex = -1;
-      return this.getCurrentSongInfo();
+      return this.getCurrentGigState();
     }
 
     if (this.currentIndex === -1) {
       this.currentIndex = 0;
-      return this.getCurrentSongInfo();
+      return this.getCurrentGigState();
     }
 
     // Already at end page, can't advance further
     if (this.currentIndex >= this.songs.length) {
-      return this.getCurrentSongInfo();
+      return this.getCurrentGigState();
     }
 
     const currentSong = this.songs[this.currentIndex];
@@ -311,37 +311,37 @@ class GameStateManager {
       this.currentIndex++;
     }
 
-    return this.getCurrentSongInfo();
+    return this.getCurrentGigState();
   }
 
-  goBack(): CurrentSongInfo {
+  goBack(): GigState {
     if (this.currentIndex > -3) {
       this.currentIndex--;
     }
-    return this.getCurrentSongInfo();
+    return this.getCurrentGigState();
   }
 
-  goToSong(index: number): CurrentSongInfo {
+  goToSong(index: number): GigState {
     if (index >= 0 && index < this.songs.length) {
       this.currentIndex = index;
     }
-    return this.getCurrentSongInfo();
+    return this.getCurrentGigState();
   }
 
-  setBattleChoice(songIndex: number, choice: 'A' | 'B'): CurrentSongInfo {
+  setBattleChoice(songIndex: number, choice: 'A' | 'B'): GigState {
     const song = this.songs[songIndex];
     if (song?.type === 'battle') {
       this.battleChoices[songIndex] = choice;
     }
-    return this.getCurrentSongInfo();
+    return this.getCurrentGigState();
   }
 
-  clearBattleChoice(songIndex: number): CurrentSongInfo {
+  clearBattleChoice(songIndex: number): GigState {
     const song = this.songs[songIndex];
     if (song?.type === 'battle') {
       delete this.battleChoices[songIndex];
     }
-    return this.getCurrentSongInfo();
+    return this.getCurrentGigState();
   }
 
   reset(): GameState {

@@ -1,16 +1,16 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
-import type { CurrentSongInfo } from '@/lib/types'
+import type { GigState } from '@/lib/types'
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 interface UseSocketOptions {
-  onGameStateUpdate?: (info: CurrentSongInfo) => void
+  onGameStateUpdate?: (info: GigState) => void
   onSkipReveal?: () => void
   onTestKeyPress?: (key: string) => void
 }
 
-export function useSocket(optionsOrCallback?: UseSocketOptions | ((info: CurrentSongInfo) => void)) {
+export function useSocket(optionsOrCallback?: UseSocketOptions | ((info: GigState) => void)) {
   const socketRef = useRef<Socket | null>(null)
   
   // Support both old callback style and new options style
@@ -38,7 +38,7 @@ export function useSocket(optionsOrCallback?: UseSocketOptions | ((info: Current
     })
 
     // Use wrapper functions that call from refs to always get latest callback
-    socketRef.current.on('gameStateUpdate', (info: CurrentSongInfo) => {
+    socketRef.current.on('gameStateUpdate', (info: GigState) => {
       callbackRefs.current.onGameStateUpdate?.(info)
     })
 

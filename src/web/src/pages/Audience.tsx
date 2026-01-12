@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSocket } from '@/hooks/use-socket'
-import type { CurrentSongInfo, BattleSong } from '@/lib/types'
+import type { GigState, BattleSong } from '@/lib/types'
 import * as api from '@/lib/api'
 import { TestScreen } from './audience/TestScreen'
 import { WelcomeScreen } from './audience/WelcomeScreen'
@@ -12,12 +12,12 @@ import { IntroScreenFilmStyle } from './audience/IntroScreenFilmStyle'
 import { EndScreen } from './audience/EndScreen'
 
 export function Audience() {
-  const [currentInfo, setCurrentInfo] = useState<CurrentSongInfo | null>(null)
+  const [currentInfo, setCurrentInfo] = useState<GigState | null>(null)
   const [loading, setLoading] = useState(true)
   const [skipRevealTriggered, setSkipRevealTriggered] = useState(false)
 
   // Handle socket updates
-  const handleGameStateUpdate = useCallback((info: CurrentSongInfo) => {
+  const handleGameStateUpdate = useCallback((info: GigState) => {
     setCurrentInfo(info)
     // Reset skip reveal trigger when song changes
     setSkipRevealTriggered(false)
@@ -39,7 +39,7 @@ export function Audience() {
     const loadInitialState = async () => {
       try {
         setLoading(true)
-        const current = await api.getCurrentSongInfo()
+        const current = await api.getCurrentGigState()
         setCurrentInfo(current)
       } catch (err) {
         console.error('Failed to load game state:', err)

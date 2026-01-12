@@ -53,7 +53,7 @@ export interface PlayedSong {
 
 export type PageType = 'test' | 'welcome' | 'intro' | 'song' | 'end'
 
-export interface CurrentSongInfo {
+export interface GigState {
   currentSong: Song | null
   nextSong: Song | null
   songNumber: number

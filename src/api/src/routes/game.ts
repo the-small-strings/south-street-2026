@@ -12,14 +12,14 @@ export function setSocketIO(socketIO: Server) {
 
 function emitGameStateUpdate() {
   if (io) {
-    const currentInfo = gameState.getCurrentSongInfo();
+    const currentInfo = gameState.getCurrentGigState();
     io.emit('gameStateUpdate', currentInfo);
   }
 }
 
 // Get current game state (current song, progress, wins)
 router.get('/current', (req: Request, res: Response) => {
-  res.json(gameState.getCurrentSongInfo());
+  res.json(gameState.getCurrentGigState());
 });
 
 // Get full game state

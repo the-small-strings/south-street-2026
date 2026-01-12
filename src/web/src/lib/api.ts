@@ -2,7 +2,7 @@ import type {
   Song,
   BingoCard,
   GameState,
-  CurrentSongInfo,
+  GigState,
   BingoWins,
   PlayedSong,
 } from './types';
@@ -26,31 +26,31 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
 }
 
 // Game state endpoints
-export async function getCurrentSongInfo(): Promise<CurrentSongInfo> {
-  return fetchApi<CurrentSongInfo>('/api/game/current');
+export async function getCurrentGigState(): Promise<GigState> {
+  return fetchApi<GigState>('/api/game/current');
 }
 
 export async function getFullGameState(): Promise<GameState> {
   return fetchApi<GameState>('/api/game/full');
 }
 
-export async function advanceToNextSong(): Promise<CurrentSongInfo> {
-  return fetchApi<CurrentSongInfo>('/api/game/next', { method: 'POST' });
+export async function advanceToNextSong(): Promise<GigState> {
+  return fetchApi<GigState>('/api/game/next', { method: 'POST' });
 }
 
-export async function goToPreviousSong(): Promise<CurrentSongInfo> {
-  return fetchApi<CurrentSongInfo>('/api/game/previous', { method: 'POST' });
+export async function goToPreviousSong(): Promise<GigState> {
+  return fetchApi<GigState>('/api/game/previous', { method: 'POST' });
 }
 
-export async function goToSong(index: number): Promise<CurrentSongInfo> {
-  return fetchApi<CurrentSongInfo>(`/api/game/goto/${index}`, { method: 'POST' });
+export async function goToSong(index: number): Promise<GigState> {
+  return fetchApi<GigState>(`/api/game/goto/${index}`, { method: 'POST' });
 }
 
 export async function setBattleChoice(
   songIndex: number,
   choice: 'A' | 'B'
-): Promise<CurrentSongInfo> {
-  return fetchApi<CurrentSongInfo>(`/api/game/battle/${songIndex}`, {
+): Promise<GigState> {
+  return fetchApi<GigState>(`/api/game/battle/${songIndex}`, {
     method: 'POST',
     body: JSON.stringify({ choice }),
   });
@@ -58,8 +58,8 @@ export async function setBattleChoice(
 
 export async function clearBattleChoice(
   songIndex: number
-): Promise<CurrentSongInfo> {
-  return fetchApi<CurrentSongInfo>(`/api/game/battle/${songIndex}`, {
+): Promise<GigState> {
+  return fetchApi<GigState>(`/api/game/battle/${songIndex}`, {
     method: 'DELETE',
   });
 }
