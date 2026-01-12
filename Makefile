@@ -11,4 +11,22 @@ run-api-test: ## run the api with test data
 	
 run-api-ss1: ## run the api with ss1 data
 	(cd src/api && ASSET_FOLDER=ss1 npm run dev)
+
+# Docker commands
+docker-build-api: ## build the api docker image
+	docker build -t tss-api:latest src/api
+
+docker-build-web: ## build the web docker image
+	docker build -t tss-web:latest src/web
+
+docker-build-all: docker-build-api docker-build-web ## build all docker images
+
+docker-run-api: ## run the api docker container (default: ss1 assets)
+	docker run -p 3001:3001 -e ASSET_FOLDER=ss1 tss-api:latest
+
+docker-run-api-test: ## run the api docker container with test assets
+	docker run -p 3001:3001 -e ASSET_FOLDER=test tss-api:latest
+
+docker-run-web: ## run the web docker container
+	docker run -p 8080:80 tss-web:latest
 	
