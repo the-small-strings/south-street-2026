@@ -50,7 +50,6 @@ export interface CurrentSongInfo {
   currentSong: Song | null;
   nextSong: Song | null;
   songNumber: number;
-  totalSongs: number;
   actualSongNumber: number;
   actualTotalSongs: number;
   progress: number;

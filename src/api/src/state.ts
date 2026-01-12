@@ -210,7 +210,6 @@ class GameStateManager {
       currentSong: isSongPage ? currentWithSelection : null,
       nextSong,
       songNumber: isSongPage ? this.currentIndex + 1 : 0,
-      totalSongs: this.songs.length,
       actualSongNumber: isSongPage ? actualSongNumber : 0,
       actualTotalSongs,
       progress: this.songs.length > 0 ? (Math.max(0, this.currentIndex + 1) / this.songs.length) * 100 : 0,

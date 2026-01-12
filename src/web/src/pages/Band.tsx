@@ -279,7 +279,7 @@ export function Band() {
 		)
 	}
 
-	const { currentSong, nextSong, songNumber, totalSongs, actualSongNumber, actualTotalSongs, progress, isComplete, wins, pageType } = currentInfo
+	const { currentSong, nextSong, songNumber, actualSongNumber, actualTotalSongs, progress, isComplete, wins, pageType } = currentInfo
 	const currentIndex = songNumber - 1
 
 	const revealedSongs = new Set(winningCards?.revealedSongs ?? [])
