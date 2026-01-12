@@ -10,7 +10,10 @@ import type {
   BingoWins,
   PlayedSong,
   GigState,
-  PageType,
+  Page,
+  BasicPage,
+  SongPage,
+  BasicPageType,
 } from './types';
 import { calculateBingoWins, getRevealedSongsUpTo } from './bingo';
 
@@ -54,29 +57,44 @@ function parseConfigToSongs(yamlContent: string): Song[] {
 }
 
 class GameStateManager {
-  private songs: Song[] = [];
   private bingoCards: BingoCard[] = [];
-  // Index scheme: -3 = test, -2 = welcome, -1 = intro, 0..n-1 = songs, n = end
-  private currentIndex: number = -3;
-  private battleChoices: Record<number, 'A' | 'B'> = {};
+  private currentPage: Page;
+  private currentPageIndex: number = 0;
+  private pages: Page[];
+  private songs: Song[];
 
   constructor() {
-    this.loadData();
-  }
-
-  private loadData(): void {
     const assetFolder = process.env.ASSET_FOLDER || "test";
     const assetsPath = path.join(__dirname, '..', 'assets', assetFolder);
 
     // Load config.yml
     const configPath = path.join(assetsPath, 'config.yml');
     const configContent = fs.readFileSync(configPath, 'utf-8');
-    this.songs = parseConfigToSongs(configContent);
+    this.songs = parseConfigToSongs(configContent)
+      .map((s) => this.normalizeSong(s));
+
+    this.currentPage = this.createBasicPage('test');
 
     // Load bingo_cards.json
     const bingoCardsPath = path.join(assetsPath, 'bingo_cards.json');
     const bingoCardsContent = fs.readFileSync(bingoCardsPath, 'utf-8');
     this.bingoCards = JSON.parse(bingoCardsContent);
+
+    this.pages = this.generatePages();
+  }
+  generatePages(): Page[] {
+    const pages: Page[] = [];
+    pages.push(this.createBasicPage('test'));
+    pages.push(this.createBasicPage('welcome'));
+    pages.push(this.createBasicPage('intro'));
+    for (let i = 0; i < this.songs.length; i++) {
+      const songPage = this.createSongPage(i);
+      if (songPage) {
+        pages.push(songPage);
+      }
+    }
+    pages.push(this.createBasicPage('end'));
+    return pages;
   }
 
   private normalizeSong(song: Song): Song {
@@ -90,19 +108,22 @@ class GameStateManager {
     return song;
   }
 
-  private getSongsWithBattleResults(): Song[] {
-    return this.songs.map((song, idx) => {
-      const normalized = this.normalizeSong(song);
-      if (normalized.type === 'battle' && this.battleChoices[idx]) {
-        return { ...normalized, selected: this.battleChoices[idx] };
-      }
-      return normalized;
-    });
+  // Get the current song index based on the current page (-1 if not on a song page)
+  private getCurrentSongIndex(): number {
+    if (this.currentPage.type === 'song') {
+      return (this.currentPage as SongPage).songNumber - 1;
+    }
+    // If on end page, return last song index
+    if (this.currentPage.type === 'end') {
+      return this.songs.length - 1;
+    }
+    return -1;
   }
 
   private getWinsPerSong(): Record<number, BingoWins> {
-    const songsWithBattleResults = this.getSongsWithBattleResults();
-    const winsMap = calculateBingoWins(this.bingoCards, songsWithBattleResults, this.currentIndex);
+    const songsWithBattleResults = this.songs;
+    const currentSongIndex = this.getCurrentSongIndex();
+    const winsMap = calculateBingoWins(this.bingoCards, songsWithBattleResults, currentSongIndex);
     const result: Record<number, BingoWins> = {};
     winsMap.forEach((value, key) => {
       result[key] = value;
@@ -112,15 +133,16 @@ class GameStateManager {
 
   private getPlayedSongs(): PlayedSong[] {
     const played: PlayedSong[] = [];
-    for (let idx = 0; idx <= this.currentIndex; idx++) {
+    const currentSongIndex = this.getCurrentSongIndex();
+    for (let idx = 0; idx <= currentSongIndex; idx++) {
       const song = this.songs[idx];
       if (!song) continue;
 
       if (song.type === 'fixed') {
         played.push({ index: idx, name: song.name, type: 'fixed' });
-      } else if (song.type === 'battle' && this.battleChoices[idx]) {
+      } else if (song.type === 'battle' && song.selected) {
         const selectedSongs =
-          this.battleChoices[idx] === 'A' ? song.optionA : song.optionB;
+          song.selected === 'A' ? song.optionA : song.optionB;
         const songName = Array.isArray(selectedSongs)
           ? selectedSongs.join(' + ')
           : String(selectedSongs);
@@ -132,95 +154,92 @@ class GameStateManager {
 
   getFullState(): GameState {
     return {
-      songs: this.songs.map((s) => this.normalizeSong(s)),
+      songs: this.songs,
       bingoCards: this.bingoCards,
-      currentIndex: this.currentIndex,
-      battleChoices: this.battleChoices,
       winsPerSong: this.getWinsPerSong(),
       playedSongs: this.getPlayedSongs(),
     };
   }
 
-  getCurrentGigState(): GigState {
-    const normalizedSongs = this.songs.map((s) => this.normalizeSong(s));
-    
-    // Determine page type based on currentIndex
-    // -3 = test, -2 = welcome, -1 = intro, 0..n-1 = songs, n = end
-    let pageType: PageType;
-    if (this.currentIndex === -3) {
-      pageType = 'test';
-    } else if (this.currentIndex === -2) {
-      pageType = 'welcome';
-    } else if (this.currentIndex === -1) {
-      pageType = 'intro';
-    } else if (this.currentIndex >= this.songs.length) {
-      pageType = 'end';
-    } else {
-      pageType = 'song';
+  // Helper to get page name for basic pages
+  private getBasicPageName(type: BasicPageType): string {
+    switch (type) {
+      case 'test': return 'Test Screen';
+      case 'welcome': return 'Welcome';
+      case 'intro': return 'Get Ready';
+      case 'end': return 'The End';
     }
-
-    const isSongPage = pageType === 'song';
-    const currentSong = isSongPage ? (normalizedSongs[this.currentIndex] ?? null) : null;
-    const nextSong = pageType === 'intro' 
-      ? normalizedSongs[0] ?? null
-      : isSongPage 
-        ? normalizedSongs[this.currentIndex + 1] ?? null 
-        : null;
-    const winsPerSong = this.getWinsPerSong();
-
-    // Add selected battle choice to current song if applicable
-    let currentWithSelection = currentSong;
-    if (currentSong?.type === 'battle' && this.battleChoices[this.currentIndex]) {
-      currentWithSelection = {
-        ...currentSong,
-        selected: this.battleChoices[this.currentIndex],
-      };
+  }
+  // Helper to create a BasicPage
+  private createBasicPage(type: BasicPageType): BasicPage {
+    return {
+      type,
+      name: this.getBasicPageName(type),
     }
+  }
 
-    // Calculate actual song counts (battles with multiple songs count each song)
-    const getSongCount = (song: Song, battleChoice?: 'A' | 'B'): number => {
-      if (song.type === 'fixed') {
-        return 1;
-      }
-      // For battles, count the songs in the selected option, or default to optionA length
-      if (battleChoice) {
-        return battleChoice === 'A' ? song.optionA.length : song.optionB.length;
-      }
-      // If no choice made yet, use optionA length as default (both options should have same count)
-      return song.optionA.length;
-    };
-
-    // Calculate actual total songs (sum of all songs across all entries)
-    let actualTotalSongs = 0;
-    for (let i = 0; i < normalizedSongs.length; i++) {
-      const song = normalizedSongs[i];
-      actualTotalSongs += getSongCount(song, this.battleChoices[i]);
+  // Helper to count songs (battles with multiple songs count each song)
+  private getSongCount(song: Song): number {
+    if (song.type === 'fixed') {
+      return 1;
     }
-
-    // Calculate actual song number (sum of songs up to and including current)
-    let actualSongNumber = 0;
-    for (let i = 0; i <= this.currentIndex; i++) {
-      const song = normalizedSongs[i];
+    if (song.type === 'battle' && song.selected) {
+      return song.selected === 'A' ? song.optionA.length : song.optionB.length;
+    }
+    return song.optionA.length;
+  };
+  // Calculate actual song number for a given index
+  private getActualSongNumber(songIndex: number): number {
+    let count = 0;
+    for (let i = 0; i <= songIndex; i++) {
+      const song = this.songs[i];
       if (song) {
-        actualSongNumber += getSongCount(song, this.battleChoices[i]);
+        count += this.getSongCount(song);
       }
     }
+    return count;
+  };
+
+
+  // Helper to create a SongPage
+  private createSongPage(songIndex: number): SongPage | null {
+    const song = this.songs[songIndex];
+    if (!song) return null;
 
     return {
-      currentSong: isSongPage ? currentWithSelection : null,
-      nextSong,
-      songNumber: isSongPage ? this.currentIndex + 1 : 0,
-      actualSongNumber: isSongPage ? actualSongNumber : 0,
+      type: 'song',
+      song,
+      songNumber: songIndex + 1,
+      actualSongNumber: this.getActualSongNumber(songIndex),
+    };
+  };
+
+
+
+  getCurrentGigState(): GigState {
+
+    // Calculate actual total songs
+    let actualTotalSongs = 0;
+    for (let i = 0; i < this.songs.length; i++) {
+      const song = this.songs[i];
+      actualTotalSongs += this.getSongCount(song);
+    }
+
+    const nextPage = this.pages[this.currentPageIndex + 1] || null;
+    const currentSongIndex = this.getCurrentSongIndex();
+
+    return {
+      currentPage: this.currentPage,
+      nextPage,
+      pageIndex: this.currentPageIndex,
       actualTotalSongs,
-      progress: this.songs.length > 0 ? (Math.max(0, this.currentIndex + 1) / this.songs.length) * 100 : 0,
-      isComplete: this.currentIndex >= this.songs.length,
-      wins: isSongPage ? (winsPerSong[this.currentIndex] ?? null) : null,
-      pageType,
+      progress: this.songs.length > 0 ? (Math.max(0, currentSongIndex + 1) / this.songs.length) * 100 : 0,
+      isComplete: this.currentPageIndex >= this.pages.length - 1,
     };
   }
 
   getSongs(): Song[] {
-    return this.songs.map((s) => this.normalizeSong(s));
+    return this.songs;
   }
 
   getBingoCards(): BingoCard[] {
@@ -229,14 +248,6 @@ class GameStateManager {
 
   getBingoCard(id: number): BingoCard | undefined {
     return this.bingoCards.find((card) => card.id === id);
-  }
-
-  getCurrentIndex(): number {
-    return this.currentIndex;
-  }
-
-  getBattleChoices(): Record<number, 'A' | 'B'> {
-    return this.battleChoices;
   }
 
   getWinsForSong(songIndex: number): BingoWins | null {
@@ -250,8 +261,7 @@ class GameStateManager {
     revealedSongs: string[];
   } {
     const wins = this.getWinsForSong(songIndex);
-    const songsWithBattleResults = this.getSongsWithBattleResults();
-    const revealedSongs = getRevealedSongsUpTo(songsWithBattleResults, songIndex);
+    const revealedSongs = getRevealedSongsUpTo(this.songs, songIndex);
 
     if (!wins) {
       return {
@@ -277,76 +287,61 @@ class GameStateManager {
   }
 
   advanceToNext(): GigState {
-    // Handle special page transitions
-    // -3 = test -> -2 = welcome
-    // -2 = welcome -> -1 = intro
-    // -1 = intro -> 0 = first song
-    // n-1 = last song -> n = end
-    if (this.currentIndex === -3) {
-      this.currentIndex = -2;
-      return this.getCurrentGigState();
+    if (this.currentPageIndex < this.pages.length - 1) {
+      if (this.currentPage.type === 'song') {
+        const songPage = this.currentPage as SongPage;
+        // If battle song without choice, cannot advance
+        console.log('Advancing from song page:', songPage);
+        if (songPage.song.type === 'battle' && !songPage.song.selected) {
+          return this.getCurrentGigState();
+        }
+      }
+      this.currentPageIndex++;
+      this.currentPage = this.pages[this.currentPageIndex];
     }
-
-    if (this.currentIndex === -2) {
-      this.currentIndex = -1;
-      return this.getCurrentGigState();
-    }
-
-    if (this.currentIndex === -1) {
-      this.currentIndex = 0;
-      return this.getCurrentGigState();
-    }
-
-    // Already at end page, can't advance further
-    if (this.currentIndex >= this.songs.length) {
-      return this.getCurrentGigState();
-    }
-
-    const currentSong = this.songs[this.currentIndex];
-
-    // Can only advance if current song is fixed, or battle with a choice made
-    if (currentSong?.type === 'fixed') {
-      this.currentIndex++;
-    } else if (currentSong?.type === 'battle' && this.battleChoices[this.currentIndex]) {
-      this.currentIndex++;
-    }
-
     return this.getCurrentGigState();
   }
 
   goBack(): GigState {
-    if (this.currentIndex > -3) {
-      this.currentIndex--;
+    if (this.currentPageIndex > 0) {
+      this.currentPageIndex--;
+      this.currentPage = this.pages[this.currentPageIndex];
     }
     return this.getCurrentGigState();
   }
 
-  goToSong(index: number): GigState {
-    if (index >= 0 && index < this.songs.length) {
-      this.currentIndex = index;
+  setBattleChoice(choice: 'A' | 'B'): GigState {
+    if (this.currentPage.type === 'song') {
+      const songPage = this.currentPage as SongPage;
+      if (songPage.song.type === 'battle') {
+        songPage.song.selected = choice;
+      }
     }
+
     return this.getCurrentGigState();
   }
 
-  setBattleChoice(songIndex: number, choice: 'A' | 'B'): GigState {
-    const song = this.songs[songIndex];
-    if (song?.type === 'battle') {
-      this.battleChoices[songIndex] = choice;
-    }
-    return this.getCurrentGigState();
-  }
-
-  clearBattleChoice(songIndex: number): GigState {
-    const song = this.songs[songIndex];
-    if (song?.type === 'battle') {
-      delete this.battleChoices[songIndex];
+  clearBattleChoice(): GigState {
+    if (this.currentPage.type === 'song') {
+      const songPage = this.currentPage as SongPage;
+      if (songPage.song.type === 'battle') {
+        delete songPage.song.selected;
+      }
     }
     return this.getCurrentGigState();
   }
 
   reset(): GameState {
-    this.currentIndex = -3; // Reset to test screen
-    this.battleChoices = {};
+    this.currentPageIndex = 0; // Reset to test screen
+    for (let i = 0; i < this.pages.length; i++) {
+      const page = this.pages[i];
+      if (page.type === 'song') {
+        const songPage = page as SongPage;
+        if (songPage.song.type === 'battle') {
+          delete songPage.song.selected;
+        }
+      }
+    }
     return this.getFullState();
   }
 }

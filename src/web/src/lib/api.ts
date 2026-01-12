@@ -42,24 +42,18 @@ export async function goToPreviousSong(): Promise<GigState> {
   return fetchApi<GigState>('/api/game/previous', { method: 'POST' });
 }
 
-export async function goToSong(index: number): Promise<GigState> {
-  return fetchApi<GigState>(`/api/game/goto/${index}`, { method: 'POST' });
-}
-
 export async function setBattleChoice(
-  songIndex: number,
   choice: 'A' | 'B'
 ): Promise<GigState> {
-  return fetchApi<GigState>(`/api/game/battle/${songIndex}`, {
+  return fetchApi<GigState>(`/api/game/battle/current`, {
     method: 'POST',
     body: JSON.stringify({ choice }),
   });
 }
 
 export async function clearBattleChoice(
-  songIndex: number
 ): Promise<GigState> {
-  return fetchApi<GigState>(`/api/game/battle/${songIndex}`, {
+  return fetchApi<GigState>(`/api/game/battle/current`, {
     method: 'DELETE',
   });
 }

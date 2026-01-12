@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { BingoCard, GameState, GigState } from '@/lib/types'
+import type { BingoCard, GameState, GigState, SongPage } from '@/lib/types'
 import { BingoCardDisplay } from '@/components/BingoCardDisplay'
 import { useSocket } from '@/hooks/use-socket'
 import * as api from '@/lib/api'
@@ -45,13 +45,16 @@ export function Band() {
 
 	// Auto-reveal song after delay (matching FixedSongDisplay's REVEAL_DELAY_MS)
 	useEffect(() => {
-		if (currentInfo?.pageType === 'song' && currentInfo?.currentSong?.type === 'fixed' && !songRevealed) {
+		const pageType = currentInfo?.currentPage.type
+		const currentSong = pageType === 'song' ? (currentInfo?.currentPage as SongPage).song : null
+		const songNumber = pageType === 'song' ? (currentInfo?.currentPage as SongPage).songNumber : 0
+		if (pageType === 'song' && currentSong?.type === 'fixed' && !songRevealed) {
 			const timer = setTimeout(() => {
 				setSongRevealed(true)
 			}, 5000)
 			return () => clearTimeout(timer)
 		}
-	}, [currentInfo?.pageType, currentInfo?.currentSong?.type, currentInfo?.songNumber, songRevealed])
+	}, [currentInfo?.currentPage, songRevealed])
 
 	// Load initial state
 	useEffect(() => {
@@ -106,9 +109,10 @@ export function Band() {
 	}, [refreshState])
 
 	const handleBattleChoice = useCallback(async (choice: 'A' | 'B') => {
-		if (!currentInfo) return
+		if (!currentInfo || currentInfo.currentPage.type !== 'song') return
 		try {
-			const newInfo = await api.setBattleChoice(currentInfo.songNumber - 1, choice)
+			const songPage = currentInfo.currentPage as SongPage
+			const newInfo = await api.setBattleChoice(choice)
 			setCurrentInfo(newInfo)
 			await refreshState()
 		} catch (err) {
@@ -117,9 +121,10 @@ export function Band() {
 	}, [currentInfo, refreshState])
 
 	const handleClearBattleChoice = useCallback(async () => {
-		if (!currentInfo) return
+		if (!currentInfo || currentInfo.currentPage.type !== 'song') return
 		try {
-			const newInfo = await api.clearBattleChoice(currentInfo.songNumber - 1)
+			const songPage = currentInfo.currentPage as SongPage
+			const newInfo = await api.clearBattleChoice()
 			setCurrentInfo(newInfo)
 			await refreshState()
 		} catch (err) {
@@ -150,8 +155,11 @@ export function Band() {
 
 			if (!currentInfo) return
 
+			const pageType = currentInfo.currentPage.type
+			const currentSong = pageType === 'song' ? (currentInfo.currentPage as SongPage).song : null
+
 			// Handle test page keyboard input
-			if (currentInfo.pageType === 'test') {
+			if (pageType === 'test') {
 				if (e.key === ' ' || e.key === 'Spacebar') {
 					e.preventDefault()
 					await handleAdvance()
@@ -166,7 +174,6 @@ export function Band() {
 
 			if (e.key === ' ' || e.key === 'Spacebar') {
 				e.preventDefault()
-				const { pageType, currentSong } = currentInfo
 				
 				// Handle special pages - always allow advancing
 				if (pageType === 'welcome' || pageType === 'intro') {
@@ -179,6 +186,7 @@ export function Band() {
 					return
 				}
 				
+				console.log("Handling space key on song page", { currentSong, songRevealed });
 				// Song page - check if we can advance
 				if (currentSong?.type === 'fixed') {
 					// First press: skip reveal delay, second press: advance
@@ -193,17 +201,18 @@ export function Band() {
 				}
 			} else if (e.key === 'b' || e.key === 'B') {
 				e.preventDefault()
-				if (currentInfo.currentSong?.type === 'battle') {
+				if (currentSong?.type === 'battle') {
 					await handleBattleChoice('B')
 				}
 			} else if (e.key === 'o' || e.key === 'O') {
 				e.preventDefault()
-				if (currentInfo.currentSong?.type === 'battle') {
+				if (currentSong?.type === 'battle') {
 					await handleBattleChoice('A')
 				}
 			} else if (e.key === 'c' || e.key === 'C') {
 				e.preventDefault()
-				if (currentInfo.currentSong?.type === 'battle' && currentInfo.currentSong.selected) {
+				console.log("Handling C key on song page", { currentSong });
+				if (currentSong?.type === 'battle' && currentSong.selected) {
 					await handleClearBattleChoice()
 				}
 			} else if (e.key === 'Backspace') {
@@ -225,7 +234,7 @@ export function Band() {
 			}
 		}, 100)
 		return () => clearTimeout(timeoutId)
-	}, [currentInfo?.songNumber, gameState?.playedSongs.length])
+	}, [currentInfo?.currentPage.type === 'song' ? (currentInfo.currentPage as SongPage).songNumber : 0, gameState?.playedSongs.length])
 
 	const openWinnersModal = async (songIndex: number, winType: 'line' | 'fullhouse' | 'all' = 'all') => {
 		setSelectedSongIndex(songIndex)
@@ -279,8 +288,16 @@ export function Band() {
 		)
 	}
 
-	const { currentSong, nextSong, songNumber, actualSongNumber, actualTotalSongs, progress, isComplete, wins, pageType } = currentInfo
-	const currentIndex = songNumber - 1
+	const { currentPage, nextPage, actualTotalSongs, progress, isComplete } = currentInfo
+	const pageType = currentPage.type
+	const isSongPage = pageType === 'song'
+	const currentSong = isSongPage ? (currentPage as SongPage).song : null
+	const songNumber = isSongPage ? (currentPage as SongPage).songNumber : 0
+	const actualSongNumber = isSongPage ? (currentPage as SongPage).actualSongNumber : 0
+	// const wins = isSongPage ? (currentPage as SongPage).wins : null
+	const wins = isSongPage ? (gameState.winsPerSong[songNumber - 1] ?? null) : null
+	const nextSong = nextPage?.type === 'song' ? (nextPage as SongPage).song : null
+	const songIndex = songNumber - 1
 
 	const revealedSongs = new Set(winningCards?.revealedSongs ?? [])
 
@@ -333,7 +350,7 @@ export function Band() {
 
 					<AnimatePresence mode="wait">
 						<motion.div
-							key={pageType === 'song' ? `song-${currentIndex}` : pageType}
+						key={pageType === 'song' ? `song-${songIndex}` : pageType}
 							initial={{ opacity: 0, x: 50 }}
 							animate={{ opacity: 1, x: 0 }}
 							exit={{ opacity: 0, x: -50 }}
@@ -468,7 +485,7 @@ export function Band() {
 													{wins.line > 0 && (
 														<Badge
 															className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors cursor-pointer"
-															onClick={() => openWinnersModal(currentIndex, 'line')}
+															onClick={() => openWinnersModal(songIndex, 'line')}
 														>
 															<Trophy size={20} weight="fill" className="mr-2" />
 															{wins.line} Line{wins.line !== 1 ? 's' : ''}
@@ -477,7 +494,7 @@ export function Band() {
 													{wins.fullhouse > 0 && (
 														<Badge
 															className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors cursor-pointer"
-															onClick={() => openWinnersModal(currentIndex, 'fullhouse')}
+															onClick={() => openWinnersModal(songIndex, 'fullhouse')}
 														>
 														<Trophy size={20} weight="fill" className="mr-2" />
 														{wins.fullhouse} Full House{wins.fullhouse !== 1 ? 's' : ''}
@@ -589,7 +606,7 @@ export function Band() {
 											{wins.line > 0 && (
 												<Badge
 													className={`bg-accent text-accent-foreground text-lg px-4 py-2 ${wins.lineWinners.length > 2 ? 'hover:bg-accent/90 transition-colors cursor-pointer' : ''}`}
-													onClick={() => openWinnersModal(currentIndex, 'line')}
+												onClick={() => openWinnersModal(songIndex, 'line')}
 												>
 													<Trophy size={20} weight="fill" className="mr-2" />
 													{wins.lineWinners.length <= 2
@@ -600,7 +617,7 @@ export function Band() {
 											{wins.fullhouse > 0 && (
 												<Badge
 													className={`bg-accent text-accent-foreground text-lg px-4 py-2 ${wins.fullhouseWinners.length > 2 ? 'hover:bg-accent/90 transition-colors cursor-pointer' : ''}`}
-													onClick={() => openWinnersModal(currentIndex, 'fullhouse')}
+												onClick={() => openWinnersModal(songIndex, 'fullhouse')}
 												>
 												<Trophy size={20} weight="fill" className="mr-2" />
 												{wins.fullhouseWinners.length <= 2
@@ -656,7 +673,7 @@ export function Band() {
 								) : (
 									gameState.playedSongs.map((song) => {
 										const songWins = gameState.winsPerSong[song.index]
-										const isCurrentSong = song.index === currentIndex
+										const isCurrentSong = song.index === songIndex
 										return (
 											<div
 												key={song.index}
@@ -729,8 +746,8 @@ export function Band() {
 								<span className="text-muted-foreground font-normal">
 									— {gameState.songs[selectedSongIndex].type === 'fixed'
 										? gameState.songs[selectedSongIndex].name
-										: `${gameState.songs[selectedSongIndex].type === 'battle' && gameState.battleChoices[selectedSongIndex]
-											? (gameState.battleChoices[selectedSongIndex] === 'A'
+										: `${gameState.songs[selectedSongIndex].type === 'battle' && gameState.songs[selectedSongIndex].selected
+											? (gameState.songs[selectedSongIndex].selected === 'A'
 												? (Array.isArray((gameState.songs[selectedSongIndex] as any).optionA) ? (gameState.songs[selectedSongIndex] as any).optionA : [(gameState.songs[selectedSongIndex] as any).optionA]).join(' + ')
 												: (Array.isArray((gameState.songs[selectedSongIndex] as any).optionB) ? (gameState.songs[selectedSongIndex] as any).optionB : [(gameState.songs[selectedSongIndex] as any).optionB]).join(' + '))
 											: 'Battle'

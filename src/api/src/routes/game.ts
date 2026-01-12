@@ -41,48 +41,24 @@ router.post('/previous', (req: Request, res: Response) => {
   res.json(result);
 });
 
-// Go to specific song index
-router.post('/goto/:index', (req: Request, res: Response) => {
-  const index = parseInt(req.params.index, 10);
-  if (isNaN(index)) {
-    res.status(400).json({ error: 'Invalid song index' });
-    return;
-  }
-  const result = gameState.goToSong(index);
-  emitGameStateUpdate();
-  res.json(result);
-});
-
 // Set battle choice for a song
-router.post('/battle/:songIndex', (req: Request, res: Response) => {
-  const songIndex = parseInt(req.params.songIndex, 10);
+router.post('/battle/current', (req: Request, res: Response) => {
   const { choice } = req.body as { choice?: 'A' | 'B' };
-
-  if (isNaN(songIndex)) {
-    res.status(400).json({ error: 'Invalid song index' });
-    return;
-  }
 
   if (choice !== 'A' && choice !== 'B') {
     res.status(400).json({ error: 'Choice must be "A" or "B"' });
     return;
   }
 
-  const result = gameState.setBattleChoice(songIndex, choice);
+  const result = gameState.setBattleChoice(choice);
   emitGameStateUpdate();
   res.json(result);
 });
 
 // Clear battle choice for a song
-router.delete('/battle/:songIndex', (req: Request, res: Response) => {
-  const songIndex = parseInt(req.params.songIndex, 10);
-
-  if (isNaN(songIndex)) {
-    res.status(400).json({ error: 'Invalid song index' });
-    return;
-  }
-
-  const result = gameState.clearBattleChoice(songIndex);
+router.delete('/battle/current', (req: Request, res: Response) => {
+  console.log('Clearing battle choice for current song');
+  const result = gameState.clearBattleChoice();
   emitGameStateUpdate();
   res.json(result);
 });

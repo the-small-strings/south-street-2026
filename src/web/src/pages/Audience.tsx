@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSocket } from '@/hooks/use-socket'
-import type { GigState, BattleSong } from '@/lib/types'
+import type { GigState, BattleSong, SongPage } from '@/lib/types'
 import * as api from '@/lib/api'
 import { TestScreen } from './audience/TestScreen'
 import { WelcomeScreen } from './audience/WelcomeScreen'
@@ -68,7 +68,10 @@ export function Audience() {
     return <WelcomeScreen />
   }
 
-  const { currentSong, songNumber, pageType } = currentInfo
+  const { currentPage } = currentInfo
+  const pageType = currentPage.type
+  const currentSong = currentPage.type === 'song' ? (currentPage as SongPage).song : null
+  const songNumber = currentPage.type === 'song' ? (currentPage as SongPage).songNumber : 0
 
   return (
     <div className="h-screen w-screen overflow-hidden">

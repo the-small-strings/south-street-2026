@@ -38,8 +38,6 @@ export interface BingoWins {
 export interface GameState {
   songs: Song[]
   bingoCards: BingoCard[]
-  currentIndex: number
-  battleChoices: Record<number, 'A' | 'B'>
   winsPerSong: Record<number, BingoWins>
   playedSongs: PlayedSong[]
 }
@@ -51,17 +49,29 @@ export interface PlayedSong {
 }
 
 
-export type PageType = 'test' | 'welcome' | 'intro' | 'song' | 'end'
+export type BasicPageType = 'test' | 'welcome' | 'intro' | 'end'
+
+export interface BasicPage {
+  type: BasicPageType
+  name: string
+}
+
+export interface SongPage {
+  type: 'song'
+  song: Song
+  songNumber: number
+  actualSongNumber: number
+  // wins: BingoWins | null
+}
+
+export type Page = BasicPage | SongPage
+
+export type PageType = BasicPageType | 'song'
 
 export interface GigState {
-  currentSong: Song | null
-  nextSong: Song | null
-  songNumber: number
-  totalSongs: number
-  actualSongNumber: number
+  currentPage: Page
+  nextPage: Page | null
   actualTotalSongs: number
   progress: number
   isComplete: boolean
-  wins: BingoWins | null
-  pageType: PageType
 }
