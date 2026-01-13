@@ -32,12 +32,17 @@ export function Band() {
 
 	const currentSongRef = useRef<HTMLDivElement>(null)
 
-	// Handle test key presses - display locally
-	const handleLocalTestKeyPress = useCallback((key: string) => {
+	// Handle test key presses from socket - display locally
+	const handleTestKeyPress = useCallback((key: string) => {
 		setTestPressedKeys((prev) => [...prev, key])
 		setTimeout(() => {
 			setTestPressedKeys((prev) => prev.slice(1))
 		}, 1000)
+	}, [])
+
+	// Handle skip reveal from socket
+	const handleSkipReveal = useCallback(() => {
+		setSongRevealed(true)
 	}, [])
 
 	// Handle game state updates from socket - refresh full state to stay in sync
@@ -57,7 +62,8 @@ export function Band() {
 	// Socket for emitting skip reveal and test events, and receiving game state updates
 	const { emitSkipReveal, emitTestKeyPress } = useSocket({
 		onGameStateUpdate: handleGameStateUpdate,
-		onTestKeyPress: handleLocalTestKeyPress,
+		onSkipReveal: handleSkipReveal,
+		onTestKeyPress: handleTestKeyPress,
 	})
 
 	// Auto-reveal song after delay (matching FixedSongDisplay's REVEAL_DELAY_MS)
@@ -93,65 +99,48 @@ export function Band() {
 		loadInitialState()
 	}, [])
 
-	const refreshState = useCallback(async () => {
-		try {
-			const fullState = await api.getFullGameState()
-			setGameState(fullState)
-		} catch (err) {
-			console.error('Failed to refresh state:', err)
-		}
-	}, [])
-
 	const handleAdvance = useCallback(async () => {
 		try {
-			const newInfo = await api.advanceToNextSong()
-			setCurrentInfo(newInfo)
-			setSongRevealed(false)
-			await refreshState()
+			await api.advanceToNextSong()
+			// State updates handled by socket event
 		} catch (err) {
 			console.error('Failed to advance:', err)
 		}
-	}, [refreshState])
+	}, [])
 
 	const handleGoBack = useCallback(async () => {
 		try {
-			const newInfo = await api.goToPreviousSong()
-			setCurrentInfo(newInfo)
-			setSongRevealed(false)
-			await refreshState()
+			await api.goToPreviousSong()
+			// State updates handled by socket event
 		} catch (err) {
 			console.error('Failed to go back:', err)
 		}
-	}, [refreshState])
+	}, [])
 
 	const handleBattleChoice = useCallback(async (choice: 'A' | 'B') => {
 		if (!currentInfo || currentInfo.currentPage.type !== 'song') return
 		try {
-			const newInfo = await api.setBattleChoice(choice)
-			setCurrentInfo(newInfo)
-			await refreshState()
+			await api.setBattleChoice(choice)
+			// State updates handled by socket event
 		} catch (err) {
 			console.error('Failed to set battle choice:', err)
 		}
-	}, [currentInfo, refreshState])
+	}, [currentInfo])
 
 	const handleClearBattleChoice = useCallback(async () => {
 		if (!currentInfo || currentInfo.currentPage.type !== 'song') return
 		try {
-			const newInfo = await api.clearBattleChoice()
-			setCurrentInfo(newInfo)
-			await refreshState()
+			await api.clearBattleChoice()
+			// State updates handled by socket event
 		} catch (err) {
 			console.error('Failed to clear battle choice:', err)
 		}
-	}, [currentInfo, refreshState])
+	}, [currentInfo])
 
 	const handleReset = useCallback(async () => {
 		try {
-			const newState = await api.resetGame()
-			setGameState(newState)
-			const newInfo = await api.getCurrentGigState()
-			setCurrentInfo(newInfo)
+			await api.resetGame()
+			// State updates handled by socket event
 		} catch (err) {
 			console.error('Failed to reset:', err)
 		}
@@ -181,7 +170,7 @@ export function Band() {
 					e.preventDefault()
 					const keyLabel = e.key.length === 1 ? e.key.toUpperCase() : e.code
 					emitTestKeyPress(keyLabel)
-					handleLocalTestKeyPress(keyLabel)
+					// Display handled by socket event
 				}
 				return
 			}
@@ -205,7 +194,7 @@ export function Band() {
 					// First press: skip reveal delay, second press: advance
 					if (!songRevealed) {
 						emitSkipReveal()
-						setSongRevealed(true)
+						// Reveal handled by socket event
 					} else {
 						await handleAdvance()
 					}
@@ -235,7 +224,7 @@ export function Band() {
 
 		window.addEventListener('keydown', handleKeyDown)
 		return () => window.removeEventListener('keydown', handleKeyDown)
-	}, [currentInfo, modalOpen, handleAdvance, handleGoBack, handleBattleChoice, handleClearBattleChoice, songRevealed, emitSkipReveal, emitTestKeyPress, handleLocalTestKeyPress])
+	}, [currentInfo, modalOpen, handleAdvance, handleGoBack, handleBattleChoice, handleClearBattleChoice, songRevealed, emitSkipReveal, emitTestKeyPress])
 
 	// Scroll current song into view
 	useEffect(() => {

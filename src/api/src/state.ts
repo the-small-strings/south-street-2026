@@ -349,6 +349,7 @@ class GameStateManager {
 
   reset(): GameState {
     this.currentPageIndex = 0; // Reset to test screen
+    this.currentPage = this.pages[this.currentPageIndex];
     for (let i = 0; i < this.pages.length; i++) {
       const page = this.pages[i];
       if (page.type === 'song') {
