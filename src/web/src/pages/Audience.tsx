@@ -10,6 +10,7 @@ import { BattleSongDisplay } from './audience/BattleSongDisplay'
 import { IntroScreenCopilot } from './audience/IntroScreenCopilot'
 import { IntroScreenFilmStyle } from './audience/IntroScreenFilmStyle'
 import { EndScreen } from './audience/EndScreen'
+import { SetBreakScreen } from './audience/SetBreakScreen'
 
 export function Audience() {
   const [currentInfo, setCurrentInfo] = useState<GigState | null>(null)
@@ -73,6 +74,7 @@ export function Audience() {
   const currentSong = currentPage.type === 'song' ? (currentPage as SongPage).song : null
   const songNumber = currentPage.type === 'song' ? (currentPage as SongPage).songNumber : 0
 
+  console.log('Rendering Audience page:', pageType, currentSong, songNumber);
   return (
     <div className="h-screen w-screen overflow-hidden">
       <AnimatePresence mode="wait">
@@ -80,6 +82,7 @@ export function Audience() {
         {pageType === 'welcome' && <WelcomeScreen key="welcome" />}
         {/* {pageType === 'intro' && <IntroScreenCopilot key="intro" />} */}
         {pageType === 'intro' && <IntroScreenFilmStyle key="intro" />}
+        {pageType === 'setBreak' && <SetBreakScreen key="setBreak" />}
         {pageType === 'end' && <EndScreen key="end" />}
         {pageType === 'song' && currentSong && (
           currentSong.type === 'fixed' ? (

@@ -39,7 +39,7 @@ export function IntroScreenFilmStyle() {
             <circle id="circle-outer" className="circle01" cx="200" cy="112.5" r="95" />
             <circle id="circle-inner" className="circle01" cx="200" cy="112.5" r="85" />
             <circle className="circle02 animated-rotate" cx="200" cy="112.5" r="494.5" />
-            <g id="numbers" text-anchor="middle" className="no-select">
+            <g id="numbers" textAnchor="middle" className="no-select">
               <text id="animated-text1" x="200.5" y="155">5</text>
               <text id="animated-text2" x="200.5" y="155">4</text>
               <text id="animated-text3" x="200.5" y="155">3</text>

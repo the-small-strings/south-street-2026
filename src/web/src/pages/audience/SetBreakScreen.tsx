@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import "../../intro-film-style.css";
 
-export function EndScreen() {
-  const websiteUrl = "thesmallstrings.com";
+export function SetBreakScreen() {
+  const message = "We'll be back soon...";
   const [displayedText, setDisplayedText] = useState("");
   const [showCursor, setShowCursor] = useState(true);
 
@@ -11,8 +11,8 @@ export function EndScreen() {
     const startDelay = setTimeout(() => {
       let currentIndex = 0;
       const typingInterval = setInterval(() => {
-        if (currentIndex < websiteUrl.length) {
-          setDisplayedText(websiteUrl.slice(0, currentIndex + 1));
+        if (currentIndex < message.length) {
+          setDisplayedText(message.slice(0, currentIndex + 1));
           currentIndex++;
         } else {
           clearInterval(typingInterval);
@@ -28,14 +28,14 @@ export function EndScreen() {
   }, []);
 
   return (
-    <div className="end-screen">
-      <div className="end-screen-logo-container">
-        <img src="/logo/black with orange.png" alt="Logo" className="end-screen-logo" />
+    <div className="set-break-screen">
+      <div className="set-break-screen-logo-container">
+        <img src="/logo/black with orange.png" alt="Logo" className="set-break-screen-logo" />
       </div>
-      <div className="end-screen-website">
+      <div className="set-break-screen-message">
         <span className="typing-text">{displayedText}</span>
         {/* Keep the cursor in the layout when not displayed so that the text doesn't shift */}
-        <span className={`typing-cursor ${showCursor ? '' : 'typing-cursor-hidden'}`}>|</span>  
+        <span className={`typing-cursor ${showCursor ? '' : 'typing-cursor-hidden'}`}>|</span>
       </div>
     </div>
   )

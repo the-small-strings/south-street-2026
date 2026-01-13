@@ -49,7 +49,7 @@ export interface PlayedSong {
 }
 
 
-export type BasicPageType = 'test' | 'welcome' | 'intro' | 'end'
+export type BasicPageType = 'test' | 'welcome' | 'intro'  | 'setBreak' | 'end'
 
 export interface BasicPage {
   type: BasicPageType

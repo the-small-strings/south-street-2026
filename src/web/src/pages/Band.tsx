@@ -176,7 +176,7 @@ export function Band() {
 				e.preventDefault()
 				
 				// Handle special pages - always allow advancing
-				if (pageType === 'welcome' || pageType === 'intro') {
+				if (pageType === 'welcome' || pageType === 'intro' || pageType === 'setBreak') {
 					await handleAdvance()
 					return
 				}
@@ -186,7 +186,6 @@ export function Band() {
 					return
 				}
 				
-				console.log("Handling space key on song page", { currentSong, songRevealed });
 				// Song page - check if we can advance
 				if (currentSong?.type === 'fixed') {
 					// First press: skip reveal delay, second press: advance
@@ -211,7 +210,6 @@ export function Band() {
 				}
 			} else if (e.key === 'c' || e.key === 'C') {
 				e.preventDefault()
-				console.log("Handling C key on song page", { currentSong });
 				if (currentSong?.type === 'battle' && currentSong.selected) {
 					await handleClearBattleChoice()
 				}
@@ -307,6 +305,7 @@ export function Band() {
 			case 'test': return 'Test Screen'
 			case 'welcome': return 'Welcome Screen'
 			case 'intro': return 'Intro'
+			case 'setBreak': return 'Set Break'
 			case 'end': return 'End Screen'
 			case 'song': return `Song ${actualSongNumber} of ${actualTotalSongs}`
 		}
@@ -441,7 +440,7 @@ export function Band() {
 												Get Ready!
 											</h2>
 											<p className="text-lg text-orange-500 mt-2">
-												The show is about to begin...
+												Walk-on music is playing
 											</p>
 										</div>
 									</div>
@@ -449,19 +448,39 @@ export function Band() {
 										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to start first song
 									</div>
 								</Card>
-							) : pageType === 'end' ? (
+							) : pageType === 'setBreak' ? (
 								<Card className="p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-transparent border-orange-500/30">
 									<div className="flex items-center justify-center gap-6">
-										<div className="text-6xl">🏆</div>
+										<div className="text-6xl">☕</div>
 										<div className="text-center">
 											<div className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">
 												Audience View
 											</div>
 											<h2 className="text-4xl font-bold tracking-tight">
-												Thank You!
+												Set Break
 											</h2>
 											<p className="text-lg text-orange-500 mt-2">
-												What a show!
+												Take a short break!
+											</p>
+										</div>
+									</div>
+									<div className="absolute bottom-4 right-8 text-muted-foreground text-sm">
+										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
+									</div>
+								</Card>
+							) : pageType === 'end' ? (
+								<Card className="p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-transparent border-orange-500/30">
+									<div className="flex items-center justify-center gap-6">
+										<div className="text-6xl">🍻</div>
+										<div className="text-center">
+											<div className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">
+												Audience View
+											</div>
+											<h2 className="text-4xl font-bold tracking-tight">
+												Logo
+											</h2>
+											<p className="text-lg text-orange-500 mt-2">
+												End of the Gig!
 											</p>
 										</div>
 									</div>

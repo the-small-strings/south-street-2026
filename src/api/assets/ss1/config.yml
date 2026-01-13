@@ -46,6 +46,7 @@ templates:
     optionsToPermute: [3,4,6,7,8]
 # This is the full list (excluding Hey Jude which is an optional encore)
 # Two of the song options are excluded from bingo to keep the number of permutations down so that we have a reasonable chance of a winner
+setBreakAfter: The Chain
 songs:
  - name: Surfin' USA
  - name: The Day We Caught the Train

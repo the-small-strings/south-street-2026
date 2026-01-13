@@ -30,10 +30,11 @@ interface YamlConfig {
   songs: YamlSongEntry[];
 }
 
-function parseConfigToSongs(yamlContent: string): Song[] {
+function parseConfig(yamlContent: string): {songs: Song[], setBreakAfter?: string} {
   const config = yaml.load(yamlContent) as YamlConfig;
   const songs: Song[] = [];
 
+  const setBreakAfter = (config as any).setBreakAfter as string | undefined;
   for (const entry of config.songs) {
     if (entry.name) {
       const fixedSong: FixedSong = {
@@ -53,7 +54,7 @@ function parseConfigToSongs(yamlContent: string): Song[] {
     }
   }
 
-  return songs;
+  return {songs, setBreakAfter};
 }
 
 class GameStateManager {
@@ -70,8 +71,9 @@ class GameStateManager {
     // Load config.yml
     const configPath = path.join(assetsPath, 'config.yml');
     const configContent = fs.readFileSync(configPath, 'utf-8');
-    this.songs = parseConfigToSongs(configContent)
-      .map((s) => this.normalizeSong(s));
+    const parsedConfig = parseConfig(configContent);
+    this.songs = parsedConfig.songs.map((s) => this.normalizeSong(s));
+    const setBreakAfter = parsedConfig.setBreakAfter;
 
     this.currentPage = this.createBasicPage('test');
 
@@ -80,9 +82,9 @@ class GameStateManager {
     const bingoCardsContent = fs.readFileSync(bingoCardsPath, 'utf-8');
     this.bingoCards = JSON.parse(bingoCardsContent);
 
-    this.pages = this.generatePages();
+    this.pages = this.generatePages(setBreakAfter);
   }
-  generatePages(): Page[] {
+  generatePages(setBreakAfter?: string): Page[] {
     const pages: Page[] = [];
     pages.push(this.createBasicPage('test'));
     pages.push(this.createBasicPage('welcome'));
@@ -91,6 +93,9 @@ class GameStateManager {
       const songPage = this.createSongPage(i);
       if (songPage) {
         pages.push(songPage);
+      }
+      if (setBreakAfter && this.songs[i].type === 'fixed' && this.songs[i].name === setBreakAfter) {
+        pages.push(this.createBasicPage('setBreak'));
       }
     }
     pages.push(this.createBasicPage('end'));
@@ -113,6 +118,15 @@ class GameStateManager {
     if (this.currentPage.type === 'song') {
       return (this.currentPage as SongPage).songNumber - 1;
     }
+    // If on the set break page, return the index of the last song before the break
+    if (this.currentPage.type === 'setBreak') {
+      for (let i = this.currentPageIndex - 1; i >= 0; i--) {
+        const page = this.pages[i];
+        if (page.type === 'song') {
+          return (page as SongPage).songNumber - 1;
+        }
+      }
+    }
     // If on end page, return last song index
     if (this.currentPage.type === 'end') {
       return this.songs.length - 1;
@@ -134,6 +148,7 @@ class GameStateManager {
   private getPlayedSongs(): PlayedSong[] {
     const played: PlayedSong[] = [];
     const currentSongIndex = this.getCurrentSongIndex();
+    console.log("Calculating played songs up to index", currentSongIndex);
     for (let idx = 0; idx <= currentSongIndex; idx++) {
       const song = this.songs[idx];
       if (!song) continue;
@@ -167,6 +182,7 @@ class GameStateManager {
       case 'test': return 'Test Screen';
       case 'welcome': return 'Welcome';
       case 'intro': return 'Get Ready';
+      case 'setBreak': return 'Set Break';
       case 'end': return 'The End';
     }
   }
