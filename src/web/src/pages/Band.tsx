@@ -39,15 +39,31 @@ export function Band() {
 			setTestPressedKeys((prev) => prev.slice(1))
 		}, 1000)
 	}, [])
+
+	// Handle game state updates from socket - refresh full state to stay in sync
+	const handleGameStateUpdate = useCallback(async (info: GigState) => {
+		setCurrentInfo(info)
+		setSongRevealed(false)
+		// Also refresh full game state to get updated wins, played songs, etc.
+		try {
+			// TODO update the game state update to send all the needed info to avoid this extra call?
+			const fullState = await api.getFullGameState()
+			setGameState(fullState)
+		} catch (err) {
+			console.error('Failed to refresh full state after socket update:', err)
+		}
+	}, [])
 	
-	// Socket for emitting skip reveal and test events
-	const { emitSkipReveal, emitTestKeyPress } = useSocket()
+	// Socket for emitting skip reveal and test events, and receiving game state updates
+	const { emitSkipReveal, emitTestKeyPress } = useSocket({
+		onGameStateUpdate: handleGameStateUpdate,
+		onTestKeyPress: handleLocalTestKeyPress,
+	})
 
 	// Auto-reveal song after delay (matching FixedSongDisplay's REVEAL_DELAY_MS)
 	useEffect(() => {
 		const pageType = currentInfo?.currentPage.type
 		const currentSong = pageType === 'song' ? (currentInfo?.currentPage as SongPage).song : null
-		const songNumber = pageType === 'song' ? (currentInfo?.currentPage as SongPage).songNumber : 0
 		if (pageType === 'song' && currentSong?.type === 'fixed' && !songRevealed) {
 			const timer = setTimeout(() => {
 				setSongRevealed(true)
@@ -111,7 +127,6 @@ export function Band() {
 	const handleBattleChoice = useCallback(async (choice: 'A' | 'B') => {
 		if (!currentInfo || currentInfo.currentPage.type !== 'song') return
 		try {
-			const songPage = currentInfo.currentPage as SongPage
 			const newInfo = await api.setBattleChoice(choice)
 			setCurrentInfo(newInfo)
 			await refreshState()
@@ -123,7 +138,6 @@ export function Band() {
 	const handleClearBattleChoice = useCallback(async () => {
 		if (!currentInfo || currentInfo.currentPage.type !== 'song') return
 		try {
-			const songPage = currentInfo.currentPage as SongPage
 			const newInfo = await api.clearBattleChoice()
 			setCurrentInfo(newInfo)
 			await refreshState()
