@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { Server } from 'socket.io';
 import { gameState } from '../state';
+import type { SongPage } from '../types';
 
 export const router = Router();
 
@@ -29,6 +30,24 @@ router.get('/full', (req: Request, res: Response) => {
 
 // Advance to next song
 router.post('/next', (req: Request, res: Response) => {
+  const currentState = gameState.getCurrentGigState();
+  const currentPage = currentState.currentPage;
+
+  // Cannot advance from end page
+  if (currentPage.type === 'end') {
+    res.status(400).json({ error: 'Cannot advance from end page' });
+    return;
+  }
+
+  // Cannot advance from battle song without a selection
+  if (currentPage.type === 'song') {
+    const songPage = currentPage as SongPage;
+    if (songPage.song.type === 'battle' && !songPage.song.selected) {
+      res.status(400).json({ error: 'Must select a battle choice before advancing' });
+      return;
+    }
+  }
+
   const result = gameState.advanceToNext();
   emitGameStateUpdate();
   res.json(result);
@@ -36,6 +55,14 @@ router.post('/next', (req: Request, res: Response) => {
 
 // Go back to previous song
 router.post('/previous', (req: Request, res: Response) => {
+  const currentState = gameState.getCurrentGigState();
+
+  // Cannot go back from first page
+  if (currentState.pageIndex === 0) {
+    res.status(400).json({ error: 'Already at the beginning' });
+    return;
+  }
+
   const result = gameState.goBack();
   emitGameStateUpdate();
   res.json(result);
@@ -50,6 +77,21 @@ router.post('/battle/current', (req: Request, res: Response) => {
     return;
   }
 
+  const currentState = gameState.getCurrentGigState();
+  const currentPage = currentState.currentPage;
+
+  // Can only set battle choice on a battle song page
+  if (currentPage.type !== 'song') {
+    res.status(400).json({ error: 'Not currently on a song page' });
+    return;
+  }
+
+  const songPage = currentPage as SongPage;
+  if (songPage.song.type !== 'battle') {
+    res.status(400).json({ error: 'Current song is not a battle song' });
+    return;
+  }
+
   const result = gameState.setBattleChoice(choice);
   emitGameStateUpdate();
   res.json(result);
@@ -58,6 +100,27 @@ router.post('/battle/current', (req: Request, res: Response) => {
 // Clear battle choice for a song
 router.delete('/battle/current', (req: Request, res: Response) => {
   console.log('Clearing battle choice for current song');
+  
+  const currentState = gameState.getCurrentGigState();
+  const currentPage = currentState.currentPage;
+
+  // Can only clear battle choice on a battle song page
+  if (currentPage.type !== 'song') {
+    res.status(400).json({ error: 'Not currently on a song page' });
+    return;
+  }
+
+  const songPage = currentPage as SongPage;
+  if (songPage.song.type !== 'battle') {
+    res.status(400).json({ error: 'Current song is not a battle song' });
+    return;
+  }
+
+  if (!songPage.song.selected) {
+    res.status(400).json({ error: 'No battle choice to clear' });
+    return;
+  }
+
   const result = gameState.clearBattleChoice();
   emitGameStateUpdate();
   res.json(result);

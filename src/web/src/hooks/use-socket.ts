@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
 import type { GigState } from '@/lib/types'
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:33001'
 
 interface UseSocketOptions {
   onGameStateUpdate?: (info: GigState) => void

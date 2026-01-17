@@ -15,7 +15,7 @@ const io = new Server(httpServer, {
     methods: ['GET', 'POST'],
   },
 });
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 33001;
 
 // Set socket.io on game router for emitting events
 setSocketIO(io);

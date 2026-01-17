@@ -22,11 +22,11 @@ docker-build-web: ## build the web docker image
 docker-build-all: docker-build-api docker-build-web ## build all docker images
 
 docker-run-api: ## run the api docker container (default: ss1 assets)
-	docker run -p 3001:3001 -e ASSET_FOLDER=ss1 tss-api:latest
+	docker run -it -p 33001:33001 -e ASSET_FOLDER=ss1 tss-api:latest
 
 docker-run-api-test: ## run the api docker container with test assets
-	docker run -p 3001:3001 -e ASSET_FOLDER=test tss-api:latest
+	docker run -it -p 33001:33001 -e ASSET_FOLDER=test tss-api:latest
 
 docker-run-web: ## run the web docker container
-	docker run -p 8080:80 tss-web:latest
+	docker run -it -p 8080:80 tss-web:latest
 	

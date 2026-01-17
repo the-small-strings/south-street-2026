@@ -30,9 +30,10 @@ RUN npm ci --only=production
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/assets ./assets
 
 # Expose the port the app runs on
-EXPOSE 3001
+EXPOSE 33001
 
 # Set default environment variables
 ENV NODE_ENV=production
