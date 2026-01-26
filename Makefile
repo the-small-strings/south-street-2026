@@ -7,10 +7,13 @@ run-web: ## run the web application
 	(cd src/web && npm run dev)
 
 run-api-test: ## run the api with test data
-	(cd src/api && ASSET_FOLDER=test npm run dev)
+	(cd src/api && ASSET_FOLDER=test STATE_FILE=$(CURDIR)/.api-state/test.json npm run dev)
 	
 run-api-ss1: ## run the api with ss1 data
-	(cd src/api && ASSET_FOLDER=ss1 npm run dev)
+	(cd src/api && ASSET_FOLDER=ss1 STATE_FILE=$(CURDIR)/.api-state/ss1.json npm run dev)
+
+test-api: ## run the api tests
+	(cd src/api && npm test)
 
 # Docker commands
 docker-build-api: ## build the api docker image
@@ -22,10 +25,12 @@ docker-build-web: ## build the web docker image
 docker-build-all: docker-build-api docker-build-web ## build all docker images
 
 docker-run-api: ## run the api docker container (default: ss1 assets)
-	docker run -it -p 33001:33001 -e ASSET_FOLDER=ss1 tss-api:latest
+	mkdir -p $(CURDIR)/.api-state && touch $(CURDIR)/.api-state/ss1.json
+	docker run -it -p 33001:33001 -e ASSET_FOLDER=ss1 -e STATE_FILE=/data/state.json -v $(CURDIR)/.api-state/ss1.json:/data/state.json tss-api:latest
 
 docker-run-api-test: ## run the api docker container with test assets
-	docker run -it -p 33001:33001 -e ASSET_FOLDER=test tss-api:latest
+	mkdir -p $(CURDIR)/.api-state && touch $(CURDIR)/.api-state/test.json
+	docker run -it -p 33001:33001 -e ASSET_FOLDER=test -e STATE_FILE=/data/state.json -v $(CURDIR)/.api-state/test.json:/data/state.json tss-api:latest
 
 docker-run-web: ## run the web docker container
 	docker run -it -p 8080:80 tss-web:latest

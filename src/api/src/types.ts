@@ -69,3 +69,9 @@ export interface GigState {
   progress: number;
   isComplete: boolean;
 }
+
+// State that is persisted to disk for crash recovery
+export interface PersistedState {
+  currentPageIndex: number;
+  battleChoices: Record<number, 'A' | 'B'>; // songIndex -> choice
+}

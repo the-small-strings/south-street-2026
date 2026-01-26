@@ -14,8 +14,52 @@ import type {
   BasicPage,
   SongPage,
   BasicPageType,
+  PersistedState,
 } from './types';
 import { calculateBingoWins, getRevealedSongsUpTo } from './bingo';
+
+// Get the state file path from env var or use default
+function getStateFilePath(): string {
+  return process.env.STATE_FILE || path.join(__dirname, '..', 'state.json');
+}
+
+// Save state to disk
+export function saveStateToDisk(state: PersistedState): void {
+  const filePath = getStateFilePath();
+  try {
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(filePath, JSON.stringify(state, null, 2), 'utf-8');
+    console.log(`State saved to ${filePath}`);
+  } catch (error) {
+    console.error(`Failed to save state to ${filePath}:`, error);
+  }
+}
+
+// Load state from disk
+export function loadStateFromDisk(): PersistedState | null {
+  const filePath = getStateFilePath();
+  try {
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf-8').trim();
+      // Handle empty file as clean state
+      if (!content) {
+        console.log(`State file at ${filePath} is empty, starting with clean state`);
+        return null;
+      }
+      const state = JSON.parse(content) as PersistedState;
+      console.log(`State loaded from ${filePath}`);
+      return state;
+    }
+    console.log(`No state file found at ${filePath}`);
+    return null;
+  } catch (error) {
+    console.error(`Failed to load state from ${filePath}:`, error);
+    return null;
+  }
+}
 
 interface YamlSongItem {
   name: string;
@@ -83,6 +127,66 @@ class GameStateManager {
     this.bingoCards = JSON.parse(bingoCardsContent);
 
     this.pages = this.generatePages(setBreakAfter);
+
+    // Load persisted state if available
+    this.loadPersistedState();
+  }
+
+  // Get the current persisted state
+  getPersistedState(): PersistedState {
+    const battleChoices: Record<number, 'A' | 'B'> = {};
+    for (let i = 0; i < this.songs.length; i++) {
+      const song = this.songs[i];
+      if (song.type === 'battle' && song.selected) {
+        battleChoices[i] = song.selected;
+      }
+    }
+    return {
+      currentPageIndex: this.currentPageIndex,
+      battleChoices,
+    };
+  }
+
+  // Save current state to disk
+  saveState(): void {
+    saveStateToDisk(this.getPersistedState());
+  }
+
+  // Load persisted state from disk
+  private loadPersistedState(): void {
+    const persistedState = loadStateFromDisk();
+    if (persistedState) {
+      this.restoreFromPersistedState(persistedState);
+    }
+  }
+
+  // Restore state from a persisted state object
+  restoreFromPersistedState(persistedState: PersistedState): void {
+    // Restore battle choices
+    for (const [indexStr, choice] of Object.entries(persistedState.battleChoices)) {
+      const index = parseInt(indexStr, 10);
+      const song = this.songs[index];
+      if (song && song.type === 'battle') {
+        song.selected = choice;
+        // Also update the song in the corresponding page
+        for (const page of this.pages) {
+          if (page.type === 'song') {
+            const songPage = page as SongPage;
+            if (songPage.songNumber - 1 === index && songPage.song.type === 'battle') {
+              songPage.song.selected = choice;
+            }
+          }
+        }
+      }
+    }
+
+    // Restore current page index (validate it's within bounds)
+    if (persistedState.currentPageIndex >= 0 && persistedState.currentPageIndex < this.pages.length) {
+      this.currentPageIndex = persistedState.currentPageIndex;
+      this.currentPage = this.pages[this.currentPageIndex];
+    }
+
+    console.log(`Restored state: page ${this.currentPageIndex}, ${Object.keys(persistedState.battleChoices).length} battle choices`);
   }
   generatePages(setBreakAfter?: string): Page[] {
     const pages: Page[] = [];

@@ -49,6 +49,7 @@ router.post('/next', (req: Request, res: Response) => {
   }
 
   const result = gameState.advanceToNext();
+  gameState.saveState();
   emitGameStateUpdate();
   res.json(result);
 });
@@ -64,6 +65,7 @@ router.post('/previous', (req: Request, res: Response) => {
   }
 
   const result = gameState.goBack();
+  gameState.saveState();
   emitGameStateUpdate();
   res.json(result);
 });
@@ -93,6 +95,7 @@ router.post('/battle/current', (req: Request, res: Response) => {
   }
 
   const result = gameState.setBattleChoice(choice);
+  gameState.saveState();
   emitGameStateUpdate();
   res.json(result);
 });
@@ -122,6 +125,7 @@ router.delete('/battle/current', (req: Request, res: Response) => {
   }
 
   const result = gameState.clearBattleChoice();
+  gameState.saveState();
   emitGameStateUpdate();
   res.json(result);
 });
@@ -129,6 +133,7 @@ router.delete('/battle/current', (req: Request, res: Response) => {
 // Reset the game
 router.post('/reset', (req: Request, res: Response) => {
   const result = gameState.reset();
+  gameState.saveState();
   emitGameStateUpdate();
   res.json(result);
 });
