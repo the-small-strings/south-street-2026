@@ -619,8 +619,19 @@ export function Band() {
 
 									</div>
 									{currentSong.selected && (
-										<div className="text-center text-muted-foreground text-sm">
-											Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
+										<div className="flex flex-col items-center gap-3">
+											<Button
+												variant="outline"
+												size="lg"
+												onClick={handleClearBattleChoice}
+												className="touch-manipulation active:scale-95 transition-transform"
+											>
+												<ArrowCounterClockwise size={20} className="mr-2" />
+												Clear Choice
+											</Button>
+											<div className="text-muted-foreground text-sm">
+												Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
+											</div>
 										</div>
 									)}
 									{wins && currentSong.selected && (wins.line > 0 || wins.fullhouse > 0) && (
