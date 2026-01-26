@@ -26,12 +26,17 @@ docker-build-all: docker-build-api docker-build-web ## build all docker images
 
 docker-run-api: ## run the api docker container (default: ss1 assets)
 	mkdir -p $(CURDIR)/.api-state && touch $(CURDIR)/.api-state/ss1.json
-	docker run -it -p 33001:33001 -e ASSET_FOLDER=ss1 -e STATE_FILE=/data/state.json -v $(CURDIR)/.api-state/ss1.json:/data/state.json tss-api:latest
+	docker run -it --rm --name tss-api -p 33001:33001 -e ASSET_FOLDER=ss1 -e STATE_FILE=/data/state.json -v $(CURDIR)/.api-state/ss1.json:/data/state.json tss-api:latest
+
+docker-stop-api: ## stop the api docker container
+	docker stop tss-api
 
 docker-run-api-test: ## run the api docker container with test assets
 	mkdir -p $(CURDIR)/.api-state && touch $(CURDIR)/.api-state/test.json
-	docker run -it -p 33001:33001 -e ASSET_FOLDER=test -e STATE_FILE=/data/state.json -v $(CURDIR)/.api-state/test.json:/data/state.json tss-api:latest
+	docker run -it --rm --name tss-api -p 33001:33001 -e ASSET_FOLDER=test -e STATE_FILE=/data/state.json -v $(CURDIR)/.api-state/test.json:/data/state.json tss-api:latest
 
 docker-run-web: ## run the web docker container
-	docker run -it -p 8080:80 tss-web:latest
-	
+	docker run -it --rm --name tss-web -p 8080:80 tss-web:latest
+
+docker-stop-web: ## stop the web docker container
+	docker stop tss-web
