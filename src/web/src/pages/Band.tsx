@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
-import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise } from '@phosphor-icons/react'
+import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise, Star, House } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { BingoCard, GameState, GigState, SongPage } from '@/lib/types'
 import { BingoCardDisplay } from '@/components/BingoCardDisplay'
@@ -315,7 +315,7 @@ export function Band() {
 	}
 
 	return (
-		<div className="min-h-screen bg-background text-foreground p-8">
+		<div className="min-h-screen bg-background text-foreground p-8 pb-24">
 			<div className="mx-auto grid lg:grid-cols-[3fr_1fr] gap-6">
 				<div className="space-y-6">
 					<div className="flex items-center justify-between">
@@ -766,6 +766,73 @@ export function Band() {
 							</div>
 						</ScrollArea>
 					</Card>
+				</div>
+			</div>
+
+			{/* Fixed Wins Summary Panel */}
+			<div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border shadow-lg z-50">
+				<div className="px-6 py-3">
+					<div className="flex items-center gap-6 overflow-x-auto">
+						<div className="flex items-center gap-2 text-sm font-semibold shrink-0">
+							<Trophy size={18} weight="fill" className="text-accent" />
+							<span>Wins</span>
+						</div>
+						<div className="flex items-center gap-4 overflow-x-auto pb-1">
+							{gameState.songs.map((song, index) => {
+								const songWins = gameState.winsPerSong[index]
+								const hasLineWin = songWins && songWins.line > 0
+								const hasHouseWin = songWins && songWins.fullhouse > 0
+								
+								if (!hasLineWin && !hasHouseWin) return null
+								
+								const songName = song.type === 'fixed' 
+									? song.name 
+									: song.selected 
+										? (song.selected === 'A' 
+											? (Array.isArray(song.optionA) ? song.optionA.join(' + ') : song.optionA)
+											: (Array.isArray(song.optionB) ? song.optionB.join(' + ') : song.optionB))
+										: `Battle ${index + 1}`
+								
+								return (
+									<div 
+										key={index} 
+										className="flex items-center gap-2 shrink-0 bg-secondary/50 rounded-lg px-3 py-2 border border-border"
+									>
+										<div className="text-xs text-muted-foreground font-medium max-w-[120px] truncate" title={songName}>
+											#{index + 1}: {songName}
+										</div>
+										<div className="flex items-center gap-1.5">
+											{hasLineWin && (
+												<div 
+													className="flex items-center gap-1 bg-orange-500/20 text-orange-500 px-2 py-1 rounded text-xs font-bold cursor-pointer hover:bg-orange-500/30 transition-colors"
+													onClick={() => openWinnersModal(index, 'line')}
+													title={`Line wins: Cards ${songWins.lineWinners.join(', ')}`}
+												>
+													<Star size={14} weight="fill" />
+													<span>L</span>
+													<span className="text-orange-400">({songWins.lineWinners.join(', ')})</span>
+												</div>
+											)}
+											{hasHouseWin && (
+												<div 
+													className="flex items-center gap-1 bg-green-500/20 text-green-500 px-2 py-1 rounded text-xs font-bold cursor-pointer hover:bg-green-500/30 transition-colors"
+													onClick={() => openWinnersModal(index, 'fullhouse')}
+													title={`Full House wins: Cards ${songWins.fullhouseWinners.join(', ')}`}
+												>
+													<House size={14} weight="fill" />
+													<span>FH</span>
+													<span className="text-green-400">({songWins.fullhouseWinners.join(', ')})</span>
+												</div>
+											)}
+										</div>
+									</div>
+								)
+							})}
+							{Object.values(gameState.winsPerSong).every(w => !w || (w.line === 0 && w.fullhouse === 0)) && (
+								<span className="text-xs text-muted-foreground italic">No wins yet</span>
+							)}
+						</div>
+					</div>
 				</div>
 			</div>
 
