@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise, Star, House, CaretLeft, CaretRight, X, CaretDown, CaretUp } from '@phosphor-icons/react'
+import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise, Star, House, CaretLeft, CaretRight, X, CaretDown, CaretUp, SpeakerHigh } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { BingoCard, GameState, GigState, SongPage } from '@/lib/types'
 import { BingoCardDisplay } from '@/components/BingoCardDisplay'
@@ -21,6 +21,8 @@ export function Band() {
 	const [error, setError] = useState<string | null>(null)
 	const [songRevealed, setSongRevealed] = useState(false)
 	const [testPressedKeys, setTestPressedKeys] = useState<string[]>([])
+	const [isPlayingWalkOn, setIsPlayingWalkOn] = useState(false)
+	const walkOnAudioRef = useRef<HTMLAudioElement | null>(null)
 
 	const [modalOpen, setModalOpen] = useState(false)
 	const [selectedSongIndex, setSelectedSongIndex] = useState<number | null>(null)
@@ -68,6 +70,26 @@ export function Band() {
 		onSkipReveal: handleSkipReveal,
 		onTestKeyPress: handleTestKeyPress,
 	})
+
+	// Handle walk-on audio playback
+	const handlePlayWalkOn = useCallback(() => {
+		if (isPlayingWalkOn && walkOnAudioRef.current) {
+			walkOnAudioRef.current.pause()
+			walkOnAudioRef.current.currentTime = 0
+			setIsPlayingWalkOn(false)
+			return
+		}
+		
+		const audio = new Audio('/Walk-on v5.wav')
+		walkOnAudioRef.current = audio
+		audio.onended = () => setIsPlayingWalkOn(false)
+		audio.play()
+			.then(() => setIsPlayingWalkOn(true))
+			.catch((err) => {
+				console.error('Failed to play walk-on audio:', err)
+				setIsPlayingWalkOn(false)
+			})
+	}, [isPlayingWalkOn])
 
 	// Auto-reveal song after delay (matching FixedSongDisplay's REVEAL_DELAY_MS)
 	useEffect(() => {
@@ -405,6 +427,19 @@ export function Band() {
 													Waiting for key presses...
 												</span>
 											)}
+										</div>
+
+										{/* Walk-on audio test button */}
+										<div className="mt-4 pt-4 border-t border-orange-500/30">
+											<Button
+												variant={isPlayingWalkOn ? "destructive" : "outline"}
+												size="sm"
+												onClick={handlePlayWalkOn}
+												className="gap-2"
+											>
+												<SpeakerHigh weight="bold" className="h-4 w-4" />
+												{isPlayingWalkOn ? 'Stop Walk-on' : 'Test Walk-on Audio'}
+											</Button>
 										</div>
 									</div>
 									<div className="hidden md:block absolute bottom-4 right-8 text-muted-foreground text-sm">
