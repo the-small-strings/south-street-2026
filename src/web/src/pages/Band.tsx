@@ -6,7 +6,8 @@ import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
-import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise, Star, House } from '@phosphor-icons/react'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise, Star, House, CaretLeft, CaretRight, X, CaretDown, CaretUp } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { BingoCard, GameState, GigState, SongPage } from '@/lib/types'
 import { BingoCardDisplay } from '@/components/BingoCardDisplay'
@@ -29,6 +30,8 @@ export function Band() {
 		fullhouseWinners: BingoCard[]
 		revealedSongs: string[]
 	} | null>(null)
+	const [lineWinsExpanded, setLineWinsExpanded] = useState(true)
+	const [fullhouseWinsExpanded, setFullhouseWinsExpanded] = useState(true)
 
 	const currentSongRef = useRef<HTMLDivElement>(null)
 
@@ -243,6 +246,9 @@ export function Band() {
 		try {
 			const winners = await api.getWinningCardsForSong(songIndex)
 			setWinningCards(winners)
+			// Auto-collapse groups with more than 4 winners
+			setLineWinsExpanded(winners.lineWinners.length <= 4)
+			setFullhouseWinsExpanded(winners.fullhouseWinners.length <= 4)
 			setModalOpen(true)
 		} catch (err) {
 			console.error('Failed to load winners:', err)
@@ -315,16 +321,16 @@ export function Band() {
 	}
 
 	return (
-		<div className="min-h-screen bg-background text-foreground p-8 pb-24">
-			<div className="mx-auto grid lg:grid-cols-[3fr_1fr] gap-6">
-				<div className="space-y-6">
-					<div className="flex items-center justify-between">
-						<div className="flex items-center gap-3">
-							<img src="/logo/black with orange.png" alt="The Small Strings Logo" className="h-8 w-8 object-contain" />
-							<h1 className="text-2xl font-bold">The Small Strings vs The Audience</h1>
+		<div className="min-h-screen bg-background text-foreground p-4 md:p-8 pb-48 md:pb-24">
+			<div className="mx-auto grid lg:grid-cols-[3fr_1fr] gap-4 md:gap-6">
+				<div className="space-y-4 md:space-y-6">
+					<div className="flex items-center justify-between gap-2">
+						<div className="flex items-center gap-2 md:gap-3 min-w-0">
+							<img src="/logo/black with orange.png" alt="The Small Strings Logo" className="h-6 w-6 md:h-8 md:w-8 object-contain shrink-0" />
+							<h1 className="text-lg md:text-2xl font-bold truncate">The Small Strings vs The Audience</h1>
 						</div>
-						<div className="flex items-center gap-4">
-							<div className="flex items-center gap-2 text-sm text-muted-foreground">
+						<div className="flex items-center gap-2 md:gap-4 shrink-0">
+							<div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
 								<Keyboard size={20} />
 								<span>Space / B / O / Backspace</span>
 							</div>
@@ -332,16 +338,16 @@ export function Band() {
 								onClick={handleReset}
 								variant="outline"
 								size="sm"
-								className="gap-2"
+								className="gap-1 md:gap-2 px-2 md:px-3"
 							>
 								<ArrowCounterClockwise size={16} />
-								Reset
+								<span className="hidden sm:inline">Reset</span>
 							</Button>
 						</div>
 					</div>
 
 					<div className="space-y-2">
-						<div className="flex items-center justify-between text-sm">
+						<div className="flex items-center justify-between text-xs md:text-sm">
 							<span className="text-muted-foreground">
 								{getPageLabel()}
 							</span>
@@ -359,27 +365,27 @@ export function Band() {
 							transition={{ duration: 0.3, ease: 'easeOut' }}
 						>
 							{pageType === 'test' ? (
-								<Card className="p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/20 to-black/20 border-orange-500/50">
-									<div className="flex flex-col items-center justify-center gap-6">
+								<Card className="p-4 md:p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/20 to-black/20 border-orange-500/50">
+									<div className="flex flex-col items-center justify-center gap-4 md:gap-6">
 										<img 
 											src="/logo/black with orange.png" 
 											alt="The Small Strings Logo" 
-											className="h-32 w-32 object-contain"
+											className="h-20 w-20 md:h-32 md:w-32 object-contain"
 										/>
 										<div className="text-center">
-											<div className="text-sm text-orange-500 mb-2 uppercase tracking-wide font-semibold">
+											<div className="text-xs md:text-sm text-orange-500 mb-1 md:mb-2 uppercase tracking-wide font-semibold">
 												Test Mode
 											</div>
-											<h2 className="text-3xl font-bold tracking-tight text-foreground">
+											<h2 className="text-xl md:text-3xl font-bold tracking-tight text-foreground">
 												Keyboard Test Screen
 											</h2>
-											<p className="text-lg text-muted-foreground mt-2">
+											<p className="text-sm md:text-lg text-muted-foreground mt-1 md:mt-2">
 												Testing keyboard connection
 											</p>
 										</div>
 										
 										{/* Key press display */}
-										<div className="flex gap-4 items-center justify-center min-h-[60px] mt-4">
+										<div className="flex gap-2 md:gap-4 items-center justify-center min-h-[50px] md:min-h-[60px] mt-2 md:mt-4">
 											<AnimatePresence>
 												{testPressedKeys.map((key, index) => (
 													<motion.div
@@ -388,161 +394,161 @@ export function Band() {
 														animate={{ scale: 1, opacity: 1, y: 0 }}
 														exit={{ scale: 0.5, opacity: 0, y: -20 }}
 														transition={{ type: "spring", stiffness: 300, damping: 20 }}
-														className="bg-orange-500 text-black text-2xl font-bold px-5 py-2 rounded-lg shadow-lg border-2 border-orange-400"
+														className="bg-orange-500 text-black text-xl md:text-2xl font-bold px-4 md:px-5 py-1.5 md:py-2 rounded-lg shadow-lg border-2 border-orange-400"
 													>
 														{key}
 													</motion.div>
 												))}
 											</AnimatePresence>
 											{testPressedKeys.length === 0 && (
-												<span className="text-muted-foreground text-sm italic">
+												<span className="text-muted-foreground text-xs md:text-sm italic">
 													Waiting for key presses...
 												</span>
 											)}
 										</div>
 									</div>
-									<div className="absolute bottom-4 right-8 text-muted-foreground text-sm">
+									<div className="hidden md:block absolute bottom-4 right-8 text-muted-foreground text-sm">
 										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
 									</div>
 								</Card>
 							) : pageType === 'welcome' ? (
-								<Card className="p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-black/10 border-orange-500/30">
-									<div className="flex items-center justify-center gap-6">
+								<Card className="p-4 md:p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-black/10 border-orange-500/30">
+									<div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-6">
 										<img 
 											src="/logo/black with orange.png" 
 											alt="The Small Strings Logo" 
-											className="h-24 w-24 object-contain"
+											className="h-16 w-16 md:h-24 md:w-24 object-contain"
 										/>
 										<div className="text-center">
-											<div className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">
+											<div className="text-xs md:text-sm text-muted-foreground mb-1 md:mb-2 uppercase tracking-wide">
 												Audience View
 											</div>
-											<h2 className="text-4xl font-bold tracking-tight">
+											<h2 className="text-xl sm:text-2xl md:text-4xl font-bold tracking-tight">
 												<span className="text-orange-500">The Small Strings</span>
-												<span className="text-muted-foreground mx-3">vs</span>
+												<span className="text-muted-foreground mx-2 md:mx-3">vs</span>
 												<span className="text-foreground">The Audience</span>
 											</h2>
-											<p className="text-lg text-muted-foreground mt-2">
+											<p className="text-sm md:text-lg text-muted-foreground mt-1 md:mt-2">
 												Welcome screen is being displayed
 											</p>
 										</div>
 									</div>
-									<div className="absolute bottom-4 right-8 text-muted-foreground text-sm">
+									<div className="hidden md:block absolute bottom-4 right-8 text-muted-foreground text-sm">
 										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
 									</div>
 								</Card>
 							) : pageType === 'intro' ? (
-								<Card className="p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/5 to-transparent border-orange-500/20">
-									<div className="flex items-center justify-center gap-6">
-										<div className="text-6xl">🎸</div>
+								<Card className="p-4 md:p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/5 to-transparent border-orange-500/20">
+									<div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-6">
+										<div className="text-4xl md:text-6xl">🎸</div>
 										<div className="text-center">
-											<div className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">
+											<div className="text-xs md:text-sm text-muted-foreground mb-1 md:mb-2 uppercase tracking-wide">
 												Audience View
 											</div>
-											<h2 className="text-4xl font-bold tracking-tight">
+											<h2 className="text-2xl md:text-4xl font-bold tracking-tight">
 												Get Ready!
 											</h2>
-											<p className="text-lg text-orange-500 mt-2">
+											<p className="text-sm md:text-lg text-orange-500 mt-1 md:mt-2">
 												Walk-on music is playing
 											</p>
 										</div>
 									</div>
-									<div className="absolute bottom-4 right-8 text-muted-foreground text-sm">
+									<div className="hidden md:block absolute bottom-4 right-8 text-muted-foreground text-sm">
 										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to start first song
 									</div>
 								</Card>
 							) : pageType === 'setBreak' ? (
-								<Card className="p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-transparent border-orange-500/30">
-									<div className="flex items-center justify-center gap-6">
-										<div className="text-6xl">☕</div>
+								<Card className="p-4 md:p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-transparent border-orange-500/30">
+									<div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-6">
+										<div className="text-4xl md:text-6xl">☕</div>
 										<div className="text-center">
-											<div className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">
+											<div className="text-xs md:text-sm text-muted-foreground mb-1 md:mb-2 uppercase tracking-wide">
 												Audience View
 											</div>
-											<h2 className="text-4xl font-bold tracking-tight">
+											<h2 className="text-2xl md:text-4xl font-bold tracking-tight">
 												Set Break
 											</h2>
-											<p className="text-lg text-orange-500 mt-2">
+											<p className="text-sm md:text-lg text-orange-500 mt-1 md:mt-2">
 												Take a short break!
 											</p>
 										</div>
 									</div>
-									<div className="absolute bottom-4 right-8 text-muted-foreground text-sm">
+									<div className="hidden md:block absolute bottom-4 right-8 text-muted-foreground text-sm">
 										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
 									</div>
 								</Card>
 							) : pageType === 'end' ? (
-								<Card className="p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-transparent border-orange-500/30">
-									<div className="flex items-center justify-center gap-6">
-										<div className="text-6xl">🍻</div>
+								<Card className="p-4 md:p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-transparent border-orange-500/30">
+									<div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-6">
+										<div className="text-4xl md:text-6xl">🍻</div>
 										<div className="text-center">
-											<div className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">
+											<div className="text-xs md:text-sm text-muted-foreground mb-1 md:mb-2 uppercase tracking-wide">
 												Audience View
 											</div>
-											<h2 className="text-4xl font-bold tracking-tight">
+											<h2 className="text-2xl md:text-4xl font-bold tracking-tight">
 												Logo
 											</h2>
-											<p className="text-lg text-orange-500 mt-2">
+											<p className="text-sm md:text-lg text-orange-500 mt-1 md:mt-2">
 												End of the Gig!
 											</p>
 										</div>
 									</div>
-									<div className="absolute bottom-4 right-8 text-muted-foreground text-sm">
+									<div className="hidden md:block absolute bottom-4 right-8 text-muted-foreground text-sm">
 										Show complete! Press <kbd className="px-2 py-1 bg-muted rounded">Backspace</kbd> to go back
 									</div>
 								</Card>
 							) : currentSong?.type === 'fixed' ? (
-								<Card className="p-8 relative overflow-hidden">
-									<div className="flex items-start justify-between gap-4">
-										<div className="flex-1">
-											<div className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">
+								<Card className="p-4 md:p-8 relative overflow-hidden">
+									<div className="flex flex-col sm:flex-row items-start justify-between gap-3 md:gap-4">
+										<div className="flex-1 min-w-0">
+											<div className="text-xs md:text-sm text-muted-foreground mb-1 md:mb-2 uppercase tracking-wide">
 												Current Song
 											</div>
-											<h2 className="text-6xl font-bold tracking-tight mb-1">
+											<h2 className="text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight mb-1 break-words">
 												{currentSong.name}
 											</h2>
 										</div>
 										{wins && (wins.line > 0 || wins.fullhouse > 0) && (
-												<div className="flex flex-col gap-2">
+												<div className="flex flex-row sm:flex-col gap-2">
 													{wins.line > 0 && (
 														<Badge
-															className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors cursor-pointer"
+															className="bg-accent text-accent-foreground text-sm md:text-lg px-3 md:px-4 py-1 md:py-2 hover:bg-accent/90 transition-colors cursor-pointer"
 															onClick={() => openWinnersModal(songIndex, 'line')}
 														>
-															<Trophy size={20} weight="fill" className="mr-2" />
+															<Trophy size={16} weight="fill" className="mr-1 md:mr-2" />
 															{wins.line} Line{wins.line !== 1 ? 's' : ''}
 														</Badge>
 													)}
 													{wins.fullhouse > 0 && (
 														<Badge
-															className="bg-accent text-accent-foreground text-lg px-4 py-2 hover:bg-accent/90 transition-colors cursor-pointer"
+															className="bg-accent text-accent-foreground text-sm md:text-lg px-3 md:px-4 py-1 md:py-2 hover:bg-accent/90 transition-colors cursor-pointer"
 															onClick={() => openWinnersModal(songIndex, 'fullhouse')}
 														>
-														<Trophy size={20} weight="fill" className="mr-2" />
+														<Trophy size={16} weight="fill" className="mr-1 md:mr-2" />
 														{wins.fullhouse} Full House{wins.fullhouse !== 1 ? 's' : ''}
 													</Badge>
 												)}
 											</div>
 										)}
 									</div>
-									<div className="absolute bottom-4 right-8 text-muted-foreground text-sm">
+									<div className="hidden md:block absolute bottom-4 right-8 text-muted-foreground text-sm">
 										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
 									</div>
 								</Card>
 							) : currentSong?.type === 'battle' ? (
-								<div className="space-y-4">
-									<div className="text-sm text-muted-foreground uppercase tracking-wide text-center">
+								<div className="space-y-3 md:space-y-4">
+									<div className="text-xs md:text-sm text-muted-foreground uppercase tracking-wide text-center">
 										{currentSong.selected ? 'Battle Result' : 'Song Battle'}
 									</div>
-									<div className="grid md:grid-cols-2 gap-4">
+									<div className="grid grid-cols-2 gap-2 md:gap-4">
 										<motion.div
 											whileHover={{ scale: 1.02 }}
 											whileTap={{ scale: 0.98 }}
 											onClick={() => handleBattleChoice('A')}
 										>
 											<Card
-												className={`p-8 cursor-pointer transition-all duration-200 relative ${currentSong.selected === 'A'
-														? 'ring-4 ring-[var(--battle-orange)] bg-[var(--battle-orange)]/10'
+												className={`p-3 md:p-8 cursor-pointer transition-all duration-200 relative ${currentSong.selected === 'A'
+														? 'ring-2 md:ring-4 ring-[var(--battle-orange)] bg-[var(--battle-orange)]/10'
 														: currentSong.selected === 'B'
 															? 'opacity-40'
 															: 'hover:bg-[var(--battle-orange)]/5'
@@ -551,16 +557,16 @@ export function Band() {
 													borderColor: currentSong.selected === 'A' ? 'var(--battle-orange)' : undefined
 												}}
 											>
-												<div className="text-sm uppercase tracking-wide mb-3" style={{ color: 'var(--battle-orange)' }}>
-													Option O (Orange)
+												<div className="text-xs md:text-sm uppercase tracking-wide mb-2 md:mb-3" style={{ color: 'var(--battle-orange)' }}>
+													<span className="hidden sm:inline">Option </span>O <span className="hidden sm:inline">(Orange)</span>
 												</div>
-												<div className="space-y-2 mb-4">
+												<div className="space-y-1 md:space-y-2 mb-2 md:mb-4">
 													{(Array.isArray(currentSong.optionA) ? currentSong.optionA : [currentSong.optionA]).map((songName, idx) => (
-														<h3 key={idx} className="text-3xl font-bold">{songName}</h3>
+														<h3 key={idx} className="text-lg sm:text-xl md:text-3xl font-bold break-words">{songName}</h3>
 													))}
 												</div>
 												{!currentSong.selected && (
-													<div className="text-muted-foreground text-sm">
+													<div className="hidden md:block text-muted-foreground text-sm">
 														Press <kbd className="px-2 py-1 bg-muted rounded">O</kbd>
 													</div>
 												)}
@@ -568,9 +574,10 @@ export function Band() {
 													<motion.div
 														initial={{ scale: 0 }}
 														animate={{ scale: 1 }}
-														className="absolute top-4 right-4"
+														className="absolute top-2 right-2 md:top-4 md:right-4"
 													>
-														<Trophy size={32} weight="fill" style={{ color: 'var(--battle-orange)' }} />
+														<Trophy size={24} className="md:hidden" weight="fill" style={{ color: 'var(--battle-orange)' }} />
+														<Trophy size={32} className="hidden md:block" weight="fill" style={{ color: 'var(--battle-orange)' }} />
 													</motion.div>
 												)}
 											</Card>
@@ -581,8 +588,8 @@ export function Band() {
 											onClick={() => handleBattleChoice('B')}
 										>
 											<Card
-												className={`p-8 cursor-pointer transition-all duration-200 relative ${currentSong.selected === 'B'
-														? 'ring-4 ring-[var(--battle-blue)] bg-[var(--battle-blue)]/10'
+												className={`p-3 md:p-8 cursor-pointer transition-all duration-200 relative ${currentSong.selected === 'B'
+														? 'ring-2 md:ring-4 ring-[var(--battle-blue)] bg-[var(--battle-blue)]/10'
 														: currentSong.selected === 'A'
 															? 'opacity-40'
 															: 'hover:bg-[var(--battle-blue)]/5'
@@ -591,16 +598,16 @@ export function Band() {
 													borderColor: currentSong.selected === 'A' ? 'var(--battle-blue)' : undefined
 												}}
 											>
-												<div className="text-sm uppercase tracking-wide mb-3" style={{ color: 'var(--battle-blue)' }}>
-													Option B (Black)
+												<div className="text-xs md:text-sm uppercase tracking-wide mb-2 md:mb-3" style={{ color: 'var(--battle-blue)' }}>
+													<span className="hidden sm:inline">Option </span>B <span className="hidden sm:inline">(Black)</span>
 												</div>
-												<div className="space-y-2 mb-4">
+												<div className="space-y-1 md:space-y-2 mb-2 md:mb-4">
 													{(Array.isArray(currentSong.optionB) ? currentSong.optionB : [currentSong.optionB]).map((songName, idx) => (
-														<h3 key={idx} className="text-3xl font-bold">{songName}</h3>
+														<h3 key={idx} className="text-lg sm:text-xl md:text-3xl font-bold break-words">{songName}</h3>
 													))}
 												</div>
 												{!currentSong.selected && (
-													<div className="text-muted-foreground text-sm">
+													<div className="hidden md:block text-muted-foreground text-sm">
 														Press <kbd className="px-2 py-1 bg-muted rounded">B</kbd>
 													</div>
 												)}
@@ -608,9 +615,10 @@ export function Band() {
 													<motion.div
 														initial={{ scale: 0 }}
 														animate={{ scale: 1 }}
-														className="absolute top-4 right-4"
+														className="absolute top-2 right-2 md:top-4 md:right-4"
 													>
-														<Trophy size={32} weight="fill" style={{ color: 'var(--battle-blue)' }} />
+														<Trophy size={24} className="md:hidden" weight="fill" style={{ color: 'var(--battle-blue)' }} />
+														<Trophy size={32} className="hidden md:block" weight="fill" style={{ color: 'var(--battle-blue)' }} />
 													</motion.div>
 												)}
 											</Card>
@@ -666,11 +674,11 @@ export function Band() {
 					</AnimatePresence>
 
 					{nextSong && (
-						<Card className="p-4 bg-secondary/50">
+						<Card className="p-3 md:p-4 bg-secondary/50">
 							<div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
 								Next Up
 							</div>
-							<div className="text-lg font-medium">
+							<div className="text-base md:text-lg font-medium">
 								{nextSong.type === 'fixed'
 									? nextSong.name
 									: <>
@@ -684,14 +692,15 @@ export function Band() {
 					)}
 
 					{isComplete && (
-						<Card className="p-6 text-center bg-accent/10 border-accent">
-							<Trophy size={48} weight="fill" className="mx-auto mb-3 text-accent" />
-							<h3 className="text-xl font-bold text-accent">Show Complete!</h3>
+						<Card className="p-4 md:p-6 text-center bg-accent/10 border-accent">
+							<Trophy size={36} className="md:hidden mx-auto mb-2 text-accent" weight="fill" />
+							<Trophy size={48} className="hidden md:block mx-auto mb-3 text-accent" weight="fill" />
+							<h3 className="text-lg md:text-xl font-bold text-accent">Show Complete!</h3>
 						</Card>
 					)}
 				</div>
 
-				<div className="space-y-4">
+				<div className="hidden lg:block space-y-4">
 					<Card className="p-4 sticky top-8">
 						<div className="flex items-center gap-2 mb-4">
 							<ListChecks size={24} weight="fill" className="text-primary" />
@@ -769,8 +778,105 @@ export function Band() {
 				</div>
 			</div>
 
-			{/* Fixed Wins Summary Panel */}
-			<div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border shadow-lg z-50">
+			{/* Mobile Controls - shown only on small screens */}
+			<div className="md:hidden fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border shadow-lg z-50">
+				<div className="px-3 py-3 space-y-3">
+					{/* Navigation Controls */}
+					<div className="flex items-center justify-between gap-2">
+						<Button
+							onClick={handleGoBack}
+							variant="outline"
+							size="lg"
+							className="flex-1 gap-2 h-12 touch-manipulation active:scale-95 transition-transform"
+							disabled={pageType === 'test'}
+						>
+							<CaretLeft size={24} weight="bold" />
+							Back
+						</Button>
+						
+						{/* Battle Choice Buttons - shown when on a battle song without selection */}
+						{currentSong?.type === 'battle' && !currentSong.selected ? (
+							<>
+								<Button
+									onClick={() => handleBattleChoice('A')}
+									variant="outline"
+									size="lg"
+									className="flex-1 h-12 touch-manipulation active:scale-95 transition-transform border-2"
+									style={{ borderColor: 'var(--battle-orange)', color: 'var(--battle-orange)' }}
+								>
+									O
+								</Button>
+								<Button
+									onClick={() => handleBattleChoice('B')}
+									variant="outline"
+									size="lg"
+									className="flex-1 h-12 touch-manipulation active:scale-95 transition-transform border-2"
+									style={{ borderColor: 'var(--battle-blue)', color: 'var(--battle-blue)' }}
+								>
+									B
+								</Button>
+							</>
+						) : currentSong?.type === 'battle' && currentSong.selected ? (
+							<Button
+								onClick={handleClearBattleChoice}
+								variant="outline"
+								size="lg"
+								className="flex-1 h-12 gap-2 touch-manipulation active:scale-95 transition-transform"
+							>
+								<X size={20} weight="bold" />
+								Clear
+							</Button>
+						) : null}
+						
+						<Button
+							onClick={handleAdvance}
+							variant="default"
+							size="lg"
+							className="flex-1 gap-2 h-12 touch-manipulation active:scale-95 transition-transform"
+							disabled={
+								pageType === 'end' || 
+								(currentSong?.type === 'battle' && !currentSong.selected)
+							}
+						>
+							Next
+							<CaretRight size={24} weight="bold" />
+						</Button>
+					</div>
+					
+					{/* Compact Wins Summary */}
+					{Object.values(gameState.winsPerSong).some(w => w && (w.line > 0 || w.fullhouse > 0)) && (
+						<div className="flex items-center gap-2 overflow-x-auto pb-1">
+							<Trophy size={16} weight="fill" className="text-accent shrink-0" />
+							{gameState.songs.map((song, index) => {
+								const songWins = gameState.winsPerSong[index]
+								const hasLineWin = songWins && songWins.line > 0
+								const hasHouseWin = songWins && songWins.fullhouse > 0
+								
+								if (!hasLineWin && !hasHouseWin) return null
+								
+								return (
+									<div 
+										key={index} 
+										className="flex items-center gap-1 shrink-0 bg-secondary/50 rounded px-2 py-1 text-xs"
+										onClick={() => openWinnersModal(index, 'all')}
+									>
+										<span className="text-muted-foreground">#{index + 1}</span>
+										{hasLineWin && (
+											<span className="text-orange-500 font-bold">L{songWins.line}</span>
+										)}
+										{hasHouseWin && (
+											<span className="text-green-500 font-bold">FH{songWins.fullhouse}</span>
+										)}
+									</div>
+								)
+							})}
+						</div>
+					)}
+				</div>
+			</div>
+
+			{/* Desktop Fixed Wins Summary Panel - hidden on mobile */}
+			<div className="hidden md:block fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t border-border shadow-lg z-50">
 				<div className="px-6 py-3">
 					<div className="flex items-center gap-6 overflow-x-auto">
 						<div className="flex items-center gap-2 text-sm font-semibold shrink-0">
@@ -860,35 +966,59 @@ export function Band() {
 					<ScrollArea className="max-h-[60vh] pr-4">
 						<div className="space-y-6">
 							{winningCards && winningCards.lineWinners.length > 0 && (selectedWinType === 'line' || selectedWinType === 'all') && (
-								<div>
-									<h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-										<Badge className="bg-accent text-accent-foreground">
-											{winningCards.lineWinners.length} Line Win{winningCards.lineWinners.length !== 1 ? 's' : ''}
-										</Badge>
-									</h4>
-									<div className="grid sm:grid-cols-2 gap-4">
-										{winningCards.lineWinners.map(card => (
-											<BingoCardDisplay key={card.id} card={card} revealedSongs={revealedSongs} />
-										))}
-									</div>
-								</div>
+								<Collapsible open={lineWinsExpanded} onOpenChange={setLineWinsExpanded}>
+									<CollapsibleTrigger className="w-full">
+										<div className="flex items-center justify-between p-2 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer">
+											<div className="flex items-center gap-2">
+												<Badge className="bg-orange-500/20 text-orange-500 border-orange-500/30">
+													<Star size={14} weight="fill" className="mr-1" />
+													{winningCards.lineWinners.length} Line Win{winningCards.lineWinners.length !== 1 ? 's' : ''}
+												</Badge>
+											</div>
+											{lineWinsExpanded ? (
+												<CaretUp size={20} className="text-muted-foreground" />
+											) : (
+												<CaretDown size={20} className="text-muted-foreground" />
+											)}
+										</div>
+									</CollapsibleTrigger>
+									<CollapsibleContent>
+										<div className="grid sm:grid-cols-2 gap-4 pt-3">
+											{winningCards.lineWinners.map(card => (
+												<BingoCardDisplay key={card.id} card={card} revealedSongs={revealedSongs} />
+											))}
+										</div>
+									</CollapsibleContent>
+								</Collapsible>
 							)}
 
 							{winningCards && winningCards.fullhouseWinners.length > 0 && (selectedWinType === 'fullhouse' || selectedWinType === 'all') && (
 								<>
 									{winningCards.lineWinners.length > 0 && selectedWinType === 'all' && <Separator />}
-									<div>
-										<h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-											<Badge className="bg-accent text-accent-foreground">
-												{winningCards.fullhouseWinners.length} Full House{winningCards.fullhouseWinners.length !== 1 ? 's' : ''}
-											</Badge>
-										</h4>
-										<div className="grid sm:grid-cols-2 gap-4">
-											{winningCards.fullhouseWinners.map(card => (
-												<BingoCardDisplay key={card.id} card={card} revealedSongs={revealedSongs} />
-											))}
-										</div>
-									</div>
+									<Collapsible open={fullhouseWinsExpanded} onOpenChange={setFullhouseWinsExpanded}>
+										<CollapsibleTrigger className="w-full">
+											<div className="flex items-center justify-between p-2 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer">
+												<div className="flex items-center gap-2">
+													<Badge className="bg-green-500/20 text-green-500 border-green-500/30">
+														<House size={14} weight="fill" className="mr-1" />
+														{winningCards.fullhouseWinners.length} Full House{winningCards.fullhouseWinners.length !== 1 ? 's' : ''}
+													</Badge>
+												</div>
+												{fullhouseWinsExpanded ? (
+													<CaretUp size={20} className="text-muted-foreground" />
+												) : (
+													<CaretDown size={20} className="text-muted-foreground" />
+												)}
+											</div>
+										</CollapsibleTrigger>
+										<CollapsibleContent>
+											<div className="grid sm:grid-cols-2 gap-4 pt-3">
+												{winningCards.fullhouseWinners.map(card => (
+													<BingoCardDisplay key={card.id} card={card} revealedSongs={revealedSongs} />
+												))}
+											</div>
+										</CollapsibleContent>
+									</Collapsible>
 								</>
 							)}
 
