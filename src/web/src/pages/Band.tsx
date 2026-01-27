@@ -750,7 +750,7 @@ export function Band() {
 																>
 																	<Trophy size={12} weight="fill" className="mr-1" />
 																	{songWins.lineWinners.length <= 2
-																		? `L: ${songWins.lineWinners.join(', ')}`
+																		? `L: ${songWins.lineWinners.map(c => `#${c}`).join(', ')}`
 																		: `${songWins.line}L`}
 																</Badge>
 															)}
@@ -761,7 +761,7 @@ export function Band() {
 																>
 																	<Trophy size={12} weight="fill" className="mr-1" />
 																	{songWins.fullhouseWinners.length <= 2
-																		? `FH: ${songWins.fullhouseWinners.join(', ')}`
+																		? `FH: ${songWins.fullhouseWinners.map(c => `#${c}`).join(', ')}`
 																		: `${songWins.fullhouse}FH`}
 																</Badge>
 															)}
@@ -912,22 +912,22 @@ export function Band() {
 												<div 
 													className="flex items-center gap-1 bg-orange-500/20 text-orange-500 px-2 py-1 rounded text-xs font-bold cursor-pointer hover:bg-orange-500/30 transition-colors"
 													onClick={() => openWinnersModal(index, 'line')}
-													title={`Line wins: Cards ${songWins.lineWinners.join(', ')}`}
+													title={`Line wins: Cards ${songWins.lineWinners.map(c => `#${c}`).join(', ')}`}
 												>
 													<Star size={14} weight="fill" />
 													<span>L</span>
-													<span className="text-orange-400">({songWins.lineWinners.join(', ')})</span>
+													<span className="text-orange-400">({songWins.lineWinners.length <= 2 ? songWins.lineWinners.map(c => `#${c}`).join(', ') : songWins.lineWinners.length})</span>
 												</div>
 											)}
 											{hasHouseWin && (
 												<div 
 													className="flex items-center gap-1 bg-green-500/20 text-green-500 px-2 py-1 rounded text-xs font-bold cursor-pointer hover:bg-green-500/30 transition-colors"
 													onClick={() => openWinnersModal(index, 'fullhouse')}
-													title={`Full House wins: Cards ${songWins.fullhouseWinners.join(', ')}`}
+													title={`Full House wins: Cards ${songWins.fullhouseWinners.map(c => `#${c}`).join(', ')}`}
 												>
 													<House size={14} weight="fill" />
 													<span>FH</span>
-													<span className="text-green-400">({songWins.fullhouseWinners.join(', ')})</span>
+													<span className="text-green-400">({songWins.fullhouseWinners.length <= 2 ? songWins.fullhouseWinners.map(c => `#${c}`).join(', ') : songWins.fullhouseWinners.length})</span>
 												</div>
 											)}
 										</div>
