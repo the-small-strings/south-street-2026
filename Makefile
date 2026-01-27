@@ -36,7 +36,8 @@ docker-run-api-test: ## run the api docker container with test assets
 	docker run -it --rm --name tss-api -p 33001:33001 -e ASSET_FOLDER=test -e STATE_FILE=/data/state.json -v $(CURDIR)/.api-state/test.json:/data/state.json tss-api:latest
 
 docker-run-web: ## run the web docker container
-	docker run -it --rm --name tss-web -p 8080:80 tss-web:latest
+# 	docker run -it --rm --name tss-web -p 8080:80 -e API_BASE_URL=$(API_BASE_URL) tss-web:latest
+	docker run -it --rm --name tss-web -p 8080:80 -e API_BASE_URL tss-web:latest
 
 docker-stop-web: ## stop the web docker container
 	docker stop tss-web
