@@ -4,6 +4,8 @@ help: ## show this help
 	| column -t -s '|'
 
 run-web: ## run the web application
+#	# Override the API URL to point to localhost:3000 for local development
+# 	(cd src/web && VITE_API_URL=http://localhost:3000 npm run dev)
 	(cd src/web && npm run dev)
 
 run-api-test: ## run the api with test data

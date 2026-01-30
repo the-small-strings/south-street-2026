@@ -43,15 +43,15 @@ RUN echo 'server { \
     } \
 }' > /etc/nginx/conf.d/default.conf
 
-# Create entrypoint script to replace API URL at runtime
-RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
-    echo 'set -e' >> /docker-entrypoint.sh && \
-    echo 'if [ -n "$API_BASE_URL" ]; then' >> /docker-entrypoint.sh && \
-    echo '  echo "Replacing API URL with: $API_BASE_URL"' >> /docker-entrypoint.sh && \
-    echo '  find /usr/share/nginx/html/assets -name "*.js" -exec sed -i "s|http://localhost:33001|$API_BASE_URL|g" {} \;' >> /docker-entrypoint.sh && \
-    echo 'fi' >> /docker-entrypoint.sh && \
-    echo 'exec "$@"' >> /docker-entrypoint.sh && \
-    chmod +x /docker-entrypoint.sh
+# # Create entrypoint script to replace API URL at runtime
+# RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
+#     echo 'set -e' >> /docker-entrypoint.sh && \
+#     echo 'if [ -n "$API_BASE_URL" ]; then' >> /docker-entrypoint.sh && \
+#     echo '  echo "Replacing API URL with: $API_BASE_URL"' >> /docker-entrypoint.sh && \
+#     echo '  find /usr/share/nginx/html/assets -name "*.js" -exec sed -i "s|http://localhost:33001|$API_BASE_URL|g" {} \;' >> /docker-entrypoint.sh && \
+#     echo 'fi' >> /docker-entrypoint.sh && \
+#     echo 'exec "$@"' >> /docker-entrypoint.sh && \
+#     chmod +x /docker-entrypoint.sh
 
 # Expose port 80
 EXPOSE 80

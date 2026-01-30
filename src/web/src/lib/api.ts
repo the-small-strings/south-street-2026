@@ -7,7 +7,10 @@ import type {
   PlayedSong,
 } from './types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:33001';
+const API_PORT = 33001;
+const location = window.location
+const API_BASE_URL = import.meta.env.VITE_API_URL || `${location.protocol}//${location.hostname}:${API_PORT}`;
+console.log("Using API base URL:", API_BASE_URL);
 
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
