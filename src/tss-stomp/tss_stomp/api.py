@@ -1,23 +1,29 @@
+import os
 import requests
 
-_API_BASE_URL = "http://wf-home.lan:33001"
-
+_api_base_env = os.getenv("API_BASE_URL")
+if _api_base_env:
+	print("Using API base URL from environment:", _api_base_env)
+	_API_BASE_URL = _api_base_env
+else:
+	_API_BASE_URL = "http://192.168.123.100:33001"
+	print("Using default API base URL:", _API_BASE_URL)
 
 
 def move_next() -> bool:
 	"""POST to /api/game/next. Returns True if successful, False otherwise."""
 	url = f"{_API_BASE_URL}/api/game/next"
-	try:
-		response = requests.post(url)
-		if response.status_code == 200:
-			print("Moved to next item.")
-			return True
-		else:
-			print(f"Failed to move to next item. Status code: {response.status_code} Response: {response.text}")
-			return False
-	except requests.RequestException as e:
-		print(f"Error moving to next item: {e}")
+	# try:
+	response = requests.post(url)
+	if response.status_code == 200:
+		print("Moved to next item.")
+		return True
+	else:
+		print(f"Failed to move to next item. Status code: {response.status_code} Response: {response.text}")
 		return False
+	# except requests.RequestException as e:
+	# 	print(f"Error moving to next item: {e}")
+	# 	return False
 
 def move_previous() -> bool:
 	"""POST to /api/game/previous. Returns True if successful, False otherwise."""

@@ -14,30 +14,17 @@ from time import sleep
 import os
 
 
-# LED pin definitions
-PIN_LED_READY = 26
-PIN_LED_ERROR = 19
-PIN_LED_LINE_WIN_1 = 13
-PIN_LED_LINE_WIN_2 = 6
-PIN_LED_LINE_WIN_3 = 5
-PIN_LED_HOUSE_WIN_1 = 27
-PIN_LED_HOUSE_WIN_2 = 17
+from tss_stomp import pins as pins
 
-# Button pin definitions
-PIN_BUTTON_PREV = 21
-PIN_BUTTON_CLEAR = 20
-PIN_BUTTON_ORANGE = 16
-PIN_BUTTON_BLACK = 12
-PIN_BUTTON_NEXT = 24
 
 # Initialize all LEDs
-led_ready = LED(PIN_LED_READY)
-led_error = LED(PIN_LED_ERROR)
-led_line_win_1 = LED(PIN_LED_LINE_WIN_1)
-led_line_win_2 = LED(PIN_LED_LINE_WIN_2)
-led_line_win_3 = LED(PIN_LED_LINE_WIN_3)
-led_house_win_1 = LED(PIN_LED_HOUSE_WIN_1)
-led_house_win_2 = LED(PIN_LED_HOUSE_WIN_2)
+led_ready = LED(pins.LED_READY)
+led_error = LED(pins.LED_ERROR)
+led_line_win_1 = LED(pins.LED_LINE_WIN_1)
+led_line_win_2 = LED(pins.LED_LINE_WIN_2)
+led_line_win_3 = LED(pins.LED_LINE_WIN_3)
+led_house_win_1 = LED(pins.LED_HOUSE_WIN_1)
+led_house_win_2 = LED(pins.LED_HOUSE_WIN_2)
 
 leds = [
     ("Line Win 1", led_line_win_1),
@@ -50,11 +37,11 @@ leds = [
 ]
 
 # Initialize all buttons
-button_next = Button(PIN_BUTTON_NEXT, bounce_time=0.1)
-button_prev = Button(PIN_BUTTON_PREV, bounce_time=0.1)
-button_orange = Button(PIN_BUTTON_ORANGE, bounce_time=0.1)
-button_black = Button(PIN_BUTTON_BLACK, bounce_time=0.1)
-button_clear = Button(PIN_BUTTON_CLEAR, bounce_time=0.1)
+button_next = Button(pins.BUTTON_NEXT, bounce_time=0.1)
+button_prev = Button(pins.BUTTON_PREV, bounce_time=0.1)
+button_orange = Button(pins.BUTTON_ORANGE, bounce_time=0.1)
+button_black = Button(pins.BUTTON_BLACK, bounce_time=0.1)
+button_clear = Button(pins.BUTTON_CLEAR, bounce_time=0.1)
 
 
 def all_leds_on():

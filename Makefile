@@ -17,6 +17,9 @@ run-api-ss1: ## run the api with ss1 data
 test-api: ## run the api tests
 	(cd src/api && npm test)
 
+run-stomp: ## run the stomp controller
+	(cd src/tss-stomp && USE_MOCK_GPIO=true API_BASE_URL=http://localhost:33001 uv run -m tss_stomp.main)
+
 # Docker commands
 docker-build-api: ## build the api docker image
 	docker build -t tss-api:latest src/api
