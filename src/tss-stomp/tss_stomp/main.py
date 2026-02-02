@@ -30,4 +30,8 @@ def on_button_clear_pressed():
     return api.clear_battle()
 
 
-app.run()
+try:
+    app.run()
+except KeyboardInterrupt:
+    print("\nCtrl+C received, stopping...")
+    app.stop()
