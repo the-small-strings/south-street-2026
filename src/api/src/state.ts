@@ -101,12 +101,30 @@ function parseConfig(yamlContent: string): {songs: Song[], setBreakAfter?: strin
   return {songs, setBreakAfter};
 }
 
+// Callback type for when song is revealed
+type SongRevealCallback = () => void;
+
+// Reveal delay in milliseconds (from env or default to 5000)
+function getRevealDelayMs(): number {
+  const envValue = process.env.REVEAL_DELAY_MS;
+  if (envValue !== undefined) {
+    const parsed = parseInt(envValue, 10);
+    if (!isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return 5000;
+}
+
 class GameStateManager {
   private bingoCards: BingoCard[] = [];
   private currentPage: Page;
   private currentPageIndex: number = 0;
   private pages: Page[];
   private songs: Song[];
+  private songRevealed: boolean;
+  private revealTimer: ReturnType<typeof setTimeout> | null = null;
+  private onSongRevealCallback: SongRevealCallback | null = null;
 
   constructor() {
     const assetFolder = process.env.ASSET_FOLDER || "test";
@@ -130,6 +148,65 @@ class GameStateManager {
 
     // Load persisted state if available
     this.loadPersistedState();
+    this.songRevealed = false;
+  }
+
+  // Set callback for when song is revealed (called by socket handler)
+  setOnSongReveal(callback: SongRevealCallback): void {
+    this.onSongRevealCallback = callback;
+  }
+
+  // Cancel any active reveal timer
+  private cancelRevealTimer(): void {
+    if (this.revealTimer) {
+      clearTimeout(this.revealTimer);
+      this.revealTimer = null;
+    }
+  }
+
+  // Start the reveal timer for fixed songs
+  private startRevealTimer(): void {
+    this.cancelRevealTimer();
+    const delayMs = getRevealDelayMs();
+    
+    // If delay is <= 0, reveal immediately without timer
+    if (delayMs <= 0) {
+      console.log('Revealing song immediately (no delay)');
+      this.songRevealed = true;
+      return;
+    }
+    
+    console.log(`Starting song reveal timer for ${delayMs} ms`);
+    this.songRevealed = false;
+    this.revealTimer = setTimeout(() => {
+      console.log('Song reveal timer elapsed, revealing song');
+      this.songRevealed = true;
+      this.revealTimer = null;
+      // Notify listeners that song was revealed
+      if (this.onSongRevealCallback) {
+        this.onSongRevealCallback();
+      }
+    }, delayMs);
+  }
+
+  // Immediately reveal the current song (cancel timer if active)
+  revealCurrentSong(): boolean {
+    // Only relevant if not already revealed and on a fixed song
+    if (this.songRevealed) {
+      return false; // Already revealed, nothing to do
+    }
+    this.cancelRevealTimer();
+    this.songRevealed = true;
+    // Notify listeners
+    if (this.onSongRevealCallback) {
+      this.onSongRevealCallback();
+    }
+    return true; // Song was revealed
+  }
+
+  // Check if current song is revealed
+  isSongRevealed(): boolean {
+    return this.songRevealed;
   }
 
   // Get the current persisted state
@@ -331,6 +408,7 @@ class GameStateManager {
       song,
       songNumber: songIndex + 1,
       actualSongNumber: this.getActualSongNumber(songIndex),
+      songRevealed: this.songRevealed,
     };
   };
 
@@ -348,8 +426,17 @@ class GameStateManager {
     const nextPage = this.pages[this.currentPageIndex + 1] || null;
     const currentSongIndex = this.getCurrentSongIndex();
 
+    // Ensure songRevealed is up-to-date on the current page
+    let currentPage: Page = this.currentPage;
+    if (this.currentPage.type === 'song') {
+      currentPage = {
+        ...this.currentPage,
+        songRevealed: this.songRevealed,
+      } as SongPage;
+    }
+
     return {
-      currentPage: this.currentPage,
+      currentPage,
       nextPage,
       pageIndex: this.currentPageIndex,
       actualTotalSongs,
@@ -418,12 +505,34 @@ class GameStateManager {
       }
       this.currentPageIndex++;
       this.currentPage = this.pages[this.currentPageIndex];
+      
+      // Handle reveal state for the new page
+      if (this.currentPage.type === 'song') {
+        const newSongPage = this.currentPage as SongPage;
+        if (newSongPage.song.type === 'fixed') {
+          // Start reveal timer for fixed songs
+          this.startRevealTimer();
+        } else {
+          // Battle songs are always "revealed" (no reveal animation)
+          this.cancelRevealTimer();
+          this.songRevealed = true;
+        }
+      } else {
+        // Non-song pages don't need reveal state
+        this.cancelRevealTimer();
+        this.songRevealed = true;
+      }
     }
     return this.getCurrentGigState();
   }
 
   goBack(): GigState {
     if (this.currentPageIndex > 0) {
+      // Cancel any active reveal timer when going back
+      this.cancelRevealTimer();
+      // Previous songs are always revealed
+      this.songRevealed = true;
+      
       this.currentPageIndex--;
       this.currentPage = this.pages[this.currentPageIndex];
     }
@@ -452,6 +561,10 @@ class GameStateManager {
   }
 
   reset(): GameState {
+    // Cancel any active reveal timer
+    this.cancelRevealTimer();
+    this.songRevealed = true;
+    
     this.currentPageIndex = 0; // Reset to test screen
     this.currentPage = this.pages[this.currentPageIndex];
     for (let i = 0; i < this.pages.length; i++) {

@@ -15,24 +15,15 @@ import { SetBreakScreen } from './audience/SetBreakScreen'
 export function Audience() {
   const [currentInfo, setCurrentInfo] = useState<GigState | null>(null)
   const [loading, setLoading] = useState(true)
-  const [skipRevealTriggered, setSkipRevealTriggered] = useState(false)
 
   // Handle socket updates
   const handleGameStateUpdate = useCallback((info: GigState) => {
     setCurrentInfo(info)
-    // Reset skip reveal trigger when song changes
-    setSkipRevealTriggered(false)
-  }, [])
-
-  // Handle skip reveal request from band
-  const handleSkipReveal = useCallback(() => {
-    setSkipRevealTriggered(true)
   }, [])
 
   // Connect to socket
   useSocket({
     onGameStateUpdate: handleGameStateUpdate,
-    onSkipReveal: handleSkipReveal,
   })
 
   // Load initial state
@@ -73,8 +64,9 @@ export function Audience() {
   const pageType = currentPage.type
   const currentSong = currentPage.type === 'song' ? (currentPage as SongPage).song : null
   const songNumber = currentPage.type === 'song' ? (currentPage as SongPage).songNumber : 0
+  const songRevealed = currentPage.type === 'song' ? (currentPage as SongPage).songRevealed : false
 
-  console.log('Rendering Audience page:', pageType, currentSong, songNumber);
+  console.log('Rendering Audience page:', pageType, currentSong, songNumber, 'revealed:', songRevealed);
   return (
     <div className="h-screen w-screen overflow-hidden">
       <AnimatePresence mode="wait">
@@ -89,7 +81,7 @@ export function Audience() {
             <FixedSongDisplay 
               key={`fixed-${songNumber}`} 
               name={currentSong.name} 
-              skipRevealTriggered={skipRevealTriggered}
+              songRevealed={songRevealed}
             />
           ) : (
             <BattleSongDisplay

@@ -6,7 +6,6 @@ const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:33001'
 
 interface UseSocketOptions {
   onGameStateUpdate?: (info: GigState) => void
-  onSkipReveal?: () => void
   onTestKeyPress?: (key: string) => void
 }
 
@@ -42,10 +41,6 @@ export function useSocket(optionsOrCallback?: UseSocketOptions | ((info: GigStat
       callbackRefs.current.onGameStateUpdate?.(info)
     })
 
-    socketRef.current.on('skipReveal', () => {
-      callbackRefs.current.onSkipReveal?.()
-    })
-
     socketRef.current.on('testKeyPress', (key: string) => {
       callbackRefs.current.onTestKeyPress?.(key)
     })
@@ -57,12 +52,6 @@ export function useSocket(optionsOrCallback?: UseSocketOptions | ((info: GigStat
     if (socketRef.current) {
       socketRef.current.disconnect()
       socketRef.current = null
-    }
-  }, [])
-
-  const emitSkipReveal = useCallback(() => {
-    if (socketRef.current?.connected) {
-      socketRef.current.emit('skipReveal')
     }
   }, [])
 
@@ -81,7 +70,6 @@ export function useSocket(optionsOrCallback?: UseSocketOptions | ((info: GigStat
     socket: socketRef.current,
     connect,
     disconnect,
-    emitSkipReveal,
     emitTestKeyPress,
   }
 }

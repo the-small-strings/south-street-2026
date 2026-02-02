@@ -6,6 +6,7 @@ import { router as healthRouter } from './routes/health';
 import { router as gameRouter, setSocketIO } from './routes/game';
 import { router as songsRouter } from './routes/songs';
 import { router as bingoRouter } from './routes/bingo';
+import { gameState } from './state';
 
 const app: Express = express();
 const httpServer = createServer(app);
@@ -19,6 +20,13 @@ const port = process.env.PORT || 33001;
 
 // Set socket.io on game router for emitting events
 setSocketIO(io);
+
+// Set up callback for when a song is auto-revealed by the timer
+gameState.setOnSongReveal(() => {
+  console.log('Song auto-revealed by timer, emitting gameStateUpdate');
+  const currentInfo = gameState.getCurrentGigState();
+  io.emit('gameStateUpdate', currentInfo);
+});
 
 // Middleware
 app.use(cors());
@@ -45,13 +53,6 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
-  });
-
-  // Handle skip reveal request from band view
-  socket.on('skipReveal', () => {
-    console.log('Skip reveal requested by:', socket.id);
-    // Broadcast to all clients (including audience)
-    io.emit('skipReveal');
   });
 
   // Handle test key press from band view test screen

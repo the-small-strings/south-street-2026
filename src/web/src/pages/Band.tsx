@@ -19,7 +19,6 @@ export function Band() {
 	const [currentInfo, setCurrentInfo] = useState<GigState | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
-	const [songRevealed, setSongRevealed] = useState(false)
 	const [testPressedKeys, setTestPressedKeys] = useState<string[]>([])
 	const [isPlayingWalkOn, setIsPlayingWalkOn] = useState(false)
 	const walkOnAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -45,15 +44,9 @@ export function Band() {
 		}, 1000)
 	}, [])
 
-	// Handle skip reveal from socket
-	const handleSkipReveal = useCallback(() => {
-		setSongRevealed(true)
-	}, [])
-
 	// Handle game state updates from socket - refresh full state to stay in sync
 	const handleGameStateUpdate = useCallback(async (info: GigState) => {
 		setCurrentInfo(info)
-		setSongRevealed(false)
 		// Also refresh full game state to get updated wins, played songs, etc.
 		try {
 			// TODO update the game state update to send all the needed info to avoid this extra call?
@@ -64,10 +57,9 @@ export function Band() {
 		}
 	}, [])
 	
-	// Socket for emitting skip reveal and test events, and receiving game state updates
-	const { emitSkipReveal, emitTestKeyPress } = useSocket({
+	// Socket for receiving game state updates and emitting test events
+	const { emitTestKeyPress } = useSocket({
 		onGameStateUpdate: handleGameStateUpdate,
-		onSkipReveal: handleSkipReveal,
 		onTestKeyPress: handleTestKeyPress,
 	})
 
@@ -90,18 +82,6 @@ export function Band() {
 				setIsPlayingWalkOn(false)
 			})
 	}, [isPlayingWalkOn])
-
-	// Auto-reveal song after delay (matching FixedSongDisplay's REVEAL_DELAY_MS)
-	useEffect(() => {
-		const pageType = currentInfo?.currentPage.type
-		const currentSong = pageType === 'song' ? (currentInfo?.currentPage as SongPage).song : null
-		if (pageType === 'song' && currentSong?.type === 'fixed' && !songRevealed) {
-			const timer = setTimeout(() => {
-				setSongRevealed(true)
-			}, 5000)
-			return () => clearTimeout(timer)
-		}
-	}, [currentInfo?.currentPage, songRevealed])
 
 	// Load initial state
 	useEffect(() => {
@@ -215,14 +195,11 @@ export function Band() {
 				}
 				
 				// Song page - check if we can advance
+				// For fixed songs: first press reveals, second press advances (handled by API)
+				// For battle songs: must have selection to advance
 				if (currentSong?.type === 'fixed') {
-					// First press: skip reveal delay, second press: advance
-					if (!songRevealed) {
-						emitSkipReveal()
-						// Reveal handled by socket event
-					} else {
-						await handleAdvance()
-					}
+					// API handles reveal vs advance logic
+					await handleAdvance()
 				} else if (currentSong?.type === 'battle' && currentSong.selected) {
 					await handleAdvance()
 				}
@@ -249,7 +226,7 @@ export function Band() {
 
 		window.addEventListener('keydown', handleKeyDown)
 		return () => window.removeEventListener('keydown', handleKeyDown)
-	}, [currentInfo, modalOpen, handleAdvance, handleGoBack, handleBattleChoice, handleClearBattleChoice, songRevealed, emitSkipReveal, emitTestKeyPress])
+	}, [currentInfo, modalOpen, handleAdvance, handleGoBack, handleBattleChoice, handleClearBattleChoice, emitTestKeyPress])
 
 	// Scroll current song into view
 	useEffect(() => {

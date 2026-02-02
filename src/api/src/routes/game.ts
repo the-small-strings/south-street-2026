@@ -46,6 +46,15 @@ router.post('/next', (req: Request, res: Response) => {
       res.status(400).json({ error: 'Must select a battle choice before advancing' });
       return;
     }
+    
+    // If on a fixed song that's not revealed yet, reveal it immediately instead of advancing
+    if (songPage.song.type === 'fixed' && !gameState.isSongRevealed()) {
+      gameState.revealCurrentSong();
+      // The reveal callback will emit the socket event, but also emit game state update here
+      emitGameStateUpdate();
+      res.json(gameState.getCurrentGigState());
+      return;
+    }
   }
 
   const result = gameState.advanceToNext();

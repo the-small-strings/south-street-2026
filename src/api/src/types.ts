@@ -54,6 +54,7 @@ export interface SongPage {
   song: Song;
   songNumber: number;
   actualSongNumber: number;
+  songRevealed: boolean;
   // wins: BingoWins | null;
 }
 
