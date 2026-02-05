@@ -11,6 +11,7 @@ import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise, Star, H
 import { motion, AnimatePresence } from 'framer-motion'
 import type { BingoCard, GameState, GigState, SongPage } from '@/lib/types'
 import { BingoCardDisplay } from '@/components/BingoCardDisplay'
+import { DisconnectedIndicator } from '@/components/DisconnectedIndicator'
 import { useSocket } from '@/hooks/use-socket'
 import * as api from '@/lib/api'
 
@@ -58,7 +59,7 @@ export function Band() {
 	}, [])
 	
 	// Socket for receiving game state updates and emitting test events
-	const { emitTestKeyPress } = useSocket({
+	const { emitTestKeyPress, isConnected } = useSocket({
 		onGameStateUpdate: handleGameStateUpdate,
 		onTestKeyPress: handleTestKeyPress,
 	})
@@ -1046,6 +1047,7 @@ export function Band() {
 					</ScrollArea>
 				</DialogContent>
 			</Dialog>
+			<DisconnectedIndicator isConnected={isConnected} position="bottom-left" />
 		</div >
 	)
 }

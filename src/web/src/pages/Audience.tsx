@@ -11,6 +11,7 @@ import { IntroScreenCopilot } from './audience/IntroScreenCopilot'
 import { IntroScreenFilmStyle } from './audience/IntroScreenFilmStyle'
 import { EndScreen } from './audience/EndScreen'
 import { SetBreakScreen } from './audience/SetBreakScreen'
+import { DisconnectedIndicator } from '@/components/DisconnectedIndicator'
 
 export function Audience() {
   const [currentInfo, setCurrentInfo] = useState<GigState | null>(null)
@@ -22,7 +23,7 @@ export function Audience() {
   }, [])
 
   // Connect to socket
-  useSocket({
+  const { isConnected } = useSocket({
     onGameStateUpdate: handleGameStateUpdate,
   })
 
@@ -92,6 +93,7 @@ export function Audience() {
           )
         )}
       </AnimatePresence>
+      <DisconnectedIndicator isConnected={isConnected} position="bottom-right" />
     </div>
   )
 }
