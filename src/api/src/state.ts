@@ -101,8 +101,8 @@ function parseConfig(yamlContent: string): {songs: Song[], setBreakAfter?: strin
   return {songs, setBreakAfter};
 }
 
-// Callback type for when song is revealed
-type SongRevealCallback = () => void;
+// Callback type for when song is revealed or intro animation starts
+type StateChangeCallback = () => void;
 
 // Reveal delay in milliseconds (from env or default to 5000)
 function getRevealDelayMs(): number {
@@ -116,6 +116,18 @@ function getRevealDelayMs(): number {
   return 5000;
 }
 
+// Intro animation delay in milliseconds (from env or default to 15500ms - after countdown completes)
+function getIntroAnimationDelayMs(): number {
+  const envValue = process.env.INTRO_ANIMATION_DELAY_MS;
+  if (envValue !== undefined) {
+    const parsed = parseInt(envValue, 10);
+    if (!isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return 15500; // Default: 15.5s (matches when logo-container-outer would normally appear)
+}
+
 class GameStateManager {
   private bingoCards: BingoCard[] = [];
   private currentPage: Page;
@@ -124,7 +136,11 @@ class GameStateManager {
   private songs: Song[];
   private songRevealed: boolean;
   private revealTimer: ReturnType<typeof setTimeout> | null = null;
-  private onSongRevealCallback: SongRevealCallback | null = null;
+  private onSongRevealCallback: StateChangeCallback | null = null;
+  private introAnimationStarted: boolean = false;
+  private introSongCompleted: boolean = false;
+  private introAnimationTimer: ReturnType<typeof setTimeout> | null = null;
+  private onIntroAnimationCallback: StateChangeCallback | null = null;
 
   constructor() {
     const assetFolder = process.env.ASSET_FOLDER || "test";
@@ -152,8 +168,13 @@ class GameStateManager {
   }
 
   // Set callback for when song is revealed (called by socket handler)
-  setOnSongReveal(callback: SongRevealCallback): void {
+  setOnSongReveal(callback: StateChangeCallback): void {
     this.onSongRevealCallback = callback;
+  }
+
+  // Set callback for when intro animation starts (called by socket handler)
+  setOnIntroAnimation(callback: StateChangeCallback): void {
+    this.onIntroAnimationCallback = callback;
   }
 
   // Cancel any active reveal timer
@@ -161,6 +182,72 @@ class GameStateManager {
     if (this.revealTimer) {
       clearTimeout(this.revealTimer);
       this.revealTimer = null;
+    }
+  }
+
+  // Cancel any active intro animation timer
+  private cancelIntroAnimationTimer(): void {
+    if (this.introAnimationTimer) {
+      clearTimeout(this.introAnimationTimer);
+      this.introAnimationTimer = null;
+    }
+  }
+
+  // Start the intro animation timer
+  private startIntroAnimationTimer(): void {
+    this.cancelIntroAnimationTimer();
+    const delayMs = getIntroAnimationDelayMs();
+    
+    // If delay is <= 0, start animation immediately without timer
+    if (delayMs <= 0) {
+      console.log('Starting intro animation immediately (no delay)');
+      this.introAnimationStarted = true;
+      return;
+    }
+    
+    console.log(`Starting intro animation timer for ${delayMs} ms`);
+    this.introAnimationStarted = false;
+    this.introAnimationTimer = setTimeout(() => {
+      console.log('Intro animation timer elapsed, starting animation');
+      this.introAnimationStarted = true;
+      this.introAnimationTimer = null;
+      // Notify listeners that intro animation started
+      if (this.onIntroAnimationCallback) {
+        this.onIntroAnimationCallback();
+      }
+    }, delayMs);
+  }
+
+  // Immediately start intro animation (cancel timer if active)
+  triggerIntroAnimation(): boolean {
+    // Only relevant if not already started and on intro page
+    if (this.introAnimationStarted) {
+      return false; // Already started, nothing to do
+    }
+    this.cancelIntroAnimationTimer();
+    this.introAnimationStarted = true;
+    // Notify listeners
+    if (this.onIntroAnimationCallback) {
+      this.onIntroAnimationCallback();
+    }
+    return true; // Animation was started
+  }
+
+  // Check if intro song has completed (song is near the end, can advance to next page)
+  isIntroSongCompleted(): boolean {
+    return this.introSongCompleted;
+  }
+
+  // Check if intro animation has started
+  isIntroAnimationStarted(): boolean {
+    return this.introAnimationStarted;
+  }
+
+  // Called by the audience client when the intro song is near the end
+  notifyIntroSongCompleted(): void {
+    if (!this.introSongCompleted) {
+      this.introSongCompleted = true;
+      console.log('Intro song completed notification received from client');
     }
   }
 
@@ -433,6 +520,12 @@ class GameStateManager {
         ...this.currentPage,
         songRevealed: this.songRevealed,
       } as SongPage;
+    } else if (this.currentPage.type === 'intro') {
+      // Include introAnimationStarted for intro page
+      currentPage = {
+        ...this.currentPage,
+        introAnimationStarted: this.introAnimationStarted,
+      } as BasicPage;
     }
 
     return {
@@ -517,10 +610,25 @@ class GameStateManager {
           this.cancelRevealTimer();
           this.songRevealed = true;
         }
-      } else {
-        // Non-song pages don't need reveal state
+        // Cancel intro animation timer when leaving intro page
+        this.cancelIntroAnimationTimer();
+      } else if (this.currentPage.type === 'intro') {
+        // Don't start intro animation timer automatically - wait for either:
+        // 1. Client notification when song finishes naturally (notifyIntroAnimationStarted)
+        // 2. Manual trigger from band page (triggerIntroAnimation via /next endpoint)
+        // Cancel song reveal timer
         this.cancelRevealTimer();
         this.songRevealed = true;
+        // Reset intro animation state for the new page
+        this.introAnimationStarted = false;
+        this.introSongCompleted = false;
+      } else {
+        // Non-song, non-intro pages don't need timers
+        this.cancelRevealTimer();
+        this.cancelIntroAnimationTimer();
+        this.songRevealed = true;
+        this.introAnimationStarted = false;
+        this.introSongCompleted = false;
       }
     }
     return this.getCurrentGigState();
@@ -528,13 +636,23 @@ class GameStateManager {
 
   goBack(): GigState {
     if (this.currentPageIndex > 0) {
-      // Cancel any active reveal timer when going back
+      // Cancel any active timers when going back
       this.cancelRevealTimer();
-      // Previous songs are always revealed
-      this.songRevealed = true;
+      this.cancelIntroAnimationTimer();
       
       this.currentPageIndex--;
       this.currentPage = this.pages[this.currentPageIndex];
+      
+      // If going back to intro page, reset intro state so it can be replayed
+      if (this.currentPage.type === 'intro') {
+        this.introAnimationStarted = false;
+        this.introSongCompleted = false;
+      } else {
+        // For other pages, mark as already revealed/completed
+        this.songRevealed = true;
+        this.introAnimationStarted = true;
+        this.introSongCompleted = true;
+      }
     }
     return this.getCurrentGigState();
   }
@@ -561,9 +679,12 @@ class GameStateManager {
   }
 
   reset(): GameState {
-    // Cancel any active reveal timer
+    // Cancel any active timers
     this.cancelRevealTimer();
+    this.cancelIntroAnimationTimer();
     this.songRevealed = true;
+    this.introAnimationStarted = false;
+    this.introSongCompleted = false;
     
     this.currentPageIndex = 0; // Reset to test screen
     this.currentPage = this.pages[this.currentPageIndex];

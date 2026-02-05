@@ -39,6 +39,31 @@ router.post('/next', (req: Request, res: Response) => {
     return;
   }
 
+  // If on intro page:
+  // - If song has <2s remaining: advance to next page
+  // - If song has >2s remaining and animation not triggered: trigger animation (fade audio, show logo)
+  // - If song has >2s remaining and animation already triggered: advance to next page
+  if (currentPage.type === 'intro') {
+    if (gameState.isIntroSongCompleted()) {
+      // <2s remaining, advance to next page
+      const result = gameState.advanceToNext();
+      gameState.saveState();
+      emitGameStateUpdate();
+      res.json(result);
+      return;
+    }
+    
+    if (!gameState.isIntroAnimationStarted()) {
+      // >2s remaining, animation not triggered yet - trigger it
+      gameState.triggerIntroAnimation();
+      emitGameStateUpdate();
+      res.json(gameState.getCurrentGigState());
+      return;
+    }
+    
+    // >2s remaining but animation already triggered - advance to next page
+  }
+
   // Cannot advance from battle song without a selection
   if (currentPage.type === 'song') {
     const songPage = currentPage as SongPage;
@@ -137,6 +162,21 @@ router.delete('/battle/current', (req: Request, res: Response) => {
   gameState.saveState();
   emitGameStateUpdate();
   res.json(result);
+});
+
+// Notify that intro song has completed (called by audience client when song is near the end)
+router.post('/intro-song-completed', (req: Request, res: Response) => {
+  const currentState = gameState.getCurrentGigState();
+  
+  // Only valid when on intro page
+  if (currentState.currentPage.type !== 'intro') {
+    res.status(400).json({ error: 'Not currently on intro page' });
+    return;
+  }
+
+  gameState.notifyIntroSongCompleted();
+  emitGameStateUpdate();
+  res.json(gameState.getCurrentGigState());
 });
 
 // Reset the game

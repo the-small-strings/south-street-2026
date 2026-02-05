@@ -119,7 +119,7 @@ body.message #message-container text {
   transform: scale(0.5);
 }
 
-/** Final logo shown with grow effect ***/
+/** Final logo shown with grow effect - controlled by JavaScript ***/
 #logo-container-outer {
   position: absolute;
   top: 0;
@@ -131,27 +131,36 @@ body.message #message-container text {
   justify-content: center;
   background: black;
   opacity: 0;
-  animation: logo-fade-in 1.5s ease-in forwards;
-  animation-delay: 15.5s;
+  /* No animation-delay - visibility controlled by JavaScript */
 }
 
-#logo-container-outer .intro-logo {
+/* When the outer logo container is visible (controlled by JS) */
+#logo-container-outer.logo-container-outer-visible {
+  animation: logo-fade-in 1.5s ease-in forwards;
+}
+
+#logo-container-outer.logo-container-outer-visible .intro-logo {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transform: scale(0.5);
   will-change: transform;
   animation: logo-grow 2s ease-in-out forwards;
-  animation-delay: 18.5s;
+  animation-delay: 3s; /* Delay after container becomes visible (was 18.5s - 15.5s = 3s) */
 }
 
 /* Orange logo fade-in */
-#logo-container-outer .intro-logo-orange {
+#logo-container-outer.logo-container-outer-visible .intro-logo-orange {
   position: absolute;
   opacity: 0;
   will-change: transform, opacity;
   animation: logo-grow 2s ease-in-out forwards, logo-orange-fade-in 2s ease-in-out forwards;
-  animation-delay: 18.5s, 68s;
+  animation-delay: 3s, 52.5s; /* Grow delay + orange fade delay (was 18.5s, 68s -> 3s, 52.5s) */
+}
+
+/* When manually triggered, orange logo fades in much sooner */
+#logo-container-outer.logo-container-outer-visible.manual-trigger .intro-logo-orange {
+  animation-delay: 3s, 6s; /* Grow delay + quick orange fade (6s after container visible) */
 }
 
 @keyframes logo-orange-fade-in {

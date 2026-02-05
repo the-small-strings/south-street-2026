@@ -65,6 +65,11 @@ export async function resetGame(): Promise<GameState> {
   return fetchApi<GameState>('/api/game/reset', { method: 'POST' });
 }
 
+// Notify API that intro song has completed (called when song is near the end)
+export async function notifyIntroSongCompleted(): Promise<GigState> {
+  return fetchApi<GigState>('/api/game/intro-song-completed', { method: 'POST' });
+}
+
 // Song endpoints
 export async function getSongs(): Promise<Song[]> {
   return fetchApi<Song[]>('/api/songs');

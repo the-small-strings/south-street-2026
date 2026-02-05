@@ -54,6 +54,7 @@ export type BasicPageType = 'test' | 'welcome' | 'intro'  | 'setBreak' | 'end'
 export interface BasicPage {
   type: BasicPageType
   name: string
+  introAnimationStarted?: boolean // Only used for intro page
 }
 
 export interface SongPage {

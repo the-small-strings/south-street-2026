@@ -65,15 +65,16 @@ export function Audience() {
   const currentSong = currentPage.type === 'song' ? (currentPage as SongPage).song : null
   const songNumber = currentPage.type === 'song' ? (currentPage as SongPage).songNumber : 0
   const songRevealed = currentPage.type === 'song' ? (currentPage as SongPage).songRevealed : false
+  const introAnimationStarted = currentPage.type === 'intro' ? currentPage.introAnimationStarted ?? false : false
 
-  console.log('Rendering Audience page:', pageType, currentSong, songNumber, 'revealed:', songRevealed);
+  console.log('Rendering Audience page:', pageType, currentSong, songNumber, 'revealed:', songRevealed, 'introAnimationStarted:', introAnimationStarted);
   return (
     <div className="h-screen w-screen overflow-hidden">
       <AnimatePresence mode="wait">
         {pageType === 'test' && <TestScreen key="test" />}
         {pageType === 'welcome' && <WelcomeScreen key="welcome" />}
         {/* {pageType === 'intro' && <IntroScreenCopilot key="intro" />} */}
-        {pageType === 'intro' && <IntroScreenFilmStyle key="intro" />}
+        {pageType === 'intro' && <IntroScreenFilmStyle key="intro" introAnimationStarted={introAnimationStarted} />}
         {pageType === 'setBreak' && <SetBreakScreen key="setBreak" />}
         {pageType === 'end' && <EndScreen key="end" />}
         {pageType === 'song' && currentSong && (

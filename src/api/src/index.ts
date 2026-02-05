@@ -28,6 +28,13 @@ gameState.setOnSongReveal(() => {
   io.emit('gameStateUpdate', currentInfo);
 });
 
+// Set up callback for when intro animation starts by the timer
+gameState.setOnIntroAnimation(() => {
+  console.log('Intro animation started by timer, emitting gameStateUpdate');
+  const currentInfo = gameState.getCurrentGigState();
+  io.emit('gameStateUpdate', currentInfo);
+});
+
 // Middleware
 app.use(cors());
 app.use(express.json());
