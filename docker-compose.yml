@@ -1,0 +1,30 @@
+services:
+  api:
+    build:
+      context: ./src/api
+      dockerfile: Dockerfile
+    image: tss-api:latest
+    container_name: tss-api
+    ports:
+      - "33001:33001"
+    environment:
+      - REVEAL_DELAY_MS=${REVEAL_DELAY_MS:-10000}
+      - ASSET_FOLDER=${ASSET_FOLDER:-ss1}
+      - STATE_FILE=/data/state.json
+    volumes:
+      - ${STATE_FILE:-./.api-state/ss1.json}:/data/state.json
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./src/web
+      dockerfile: Dockerfile
+    image: tss-web:latest
+    container_name: tss-web
+    ports:
+      - "8080:80"
+    environment:
+      - API_BASE_URL=${API_BASE_URL:-http://localhost:33001}
+    depends_on:
+      - api
+    restart: unless-stopped

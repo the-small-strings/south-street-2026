@@ -23,29 +23,68 @@ test-api: ## run the api tests
 run-stomp: ## run the stomp controller
 	(cd src/tss-stomp && USE_MOCK_GPIO=true API_BASE_URL=http://localhost:33001 uv run -m tss_stomp.main)
 
-# Docker commands
+reset-api-state: ## reset the api state files
+	rm -f $(CURDIR)/.api-state/*.json
+	mkdir -p $(CURDIR)/.api-state
+
+# Docker Compose commands
+ASSET_FOLDER ?= ss1
+STATE_FILE ?= $(CURDIR)/.api-state/$(ASSET_FOLDER).json
+API_BASE_URL ?= http://localhost:33001
+
 docker-build-api: ## build the api docker image
-	docker build -t tss-api:latest src/api
+	docker compose build api
 
 docker-build-web: ## build the web docker image
-	docker build -t tss-web:latest src/web
+	docker compose build web
 
-docker-build-all: docker-build-api docker-build-web ## build all docker images
+docker-build-all: ## build all docker images
+	docker compose build
 
-docker-run-api: ## run the api docker container (default: ss1 assets)
-	mkdir -p $(CURDIR)/.api-state && touch $(CURDIR)/.api-state/ss1.json
-	docker run -it --rm --name tss-api -p 33001:33001 -e REVEAL_DELAY_MS=$(REVEAL_DELAY_MS)  -e ASSET_FOLDER=ss1 -e STATE_FILE=/data/state.json -v $(CURDIR)/.api-state/ss1.json:/data/state.json tss-api:latest
+docker-up: docker-ensure-state ## run all services via docker compose (default: ss1)
+	ASSET_FOLDER=$(ASSET_FOLDER) STATE_FILE=$(STATE_FILE) REVEAL_DELAY_MS=$(REVEAL_DELAY_MS) API_BASE_URL=$(API_BASE_URL) docker compose up
 
-docker-stop-api: ## stop the api docker container
-	docker stop tss-api
+docker-up-detached: docker-ensure-state ## run all services via docker compose in detached mode
+	ASSET_FOLDER=$(ASSET_FOLDER) STATE_FILE=$(STATE_FILE) REVEAL_DELAY_MS=$(REVEAL_DELAY_MS) API_BASE_URL=$(API_BASE_URL) docker compose up -d
 
-docker-run-api-test: ## run the api docker container with test assets
-	mkdir -p $(CURDIR)/.api-state && touch $(CURDIR)/.api-state/test.json
-	docker run -it --rm --name tss-api -p 33001:33001 -e REVEAL_DELAY_MS=$(REVEAL_DELAY_MS)  -e ASSET_FOLDER=test -e STATE_FILE=/data/state.json -v $(CURDIR)/.api-state/test.json:/data/state.json tss-api:latest
+docker-down: ## stop all docker compose services
+	docker compose down
 
-docker-run-web: ## run the web docker container
-# 	docker run -it --rm --name tss-web -p 8080:80 -e API_BASE_URL=$(API_BASE_URL) tss-web:latest
-	docker run -it --rm --name tss-web -p 8080:80 -e API_BASE_URL tss-web:latest
+docker-logs: ## view logs from docker compose services
+	docker compose logs -f
 
-docker-stop-web: ## stop the web docker container
-	docker stop tss-web
+docker-ensure-state: ## ensure state file exists
+	mkdir -p $(CURDIR)/.api-state && touch $(STATE_FILE)
+
+# Docker Compose with ss1 config
+docker-up-ss1: ## run all services with ss1 config
+	$(MAKE) docker-up ASSET_FOLDER=ss1 STATE_FILE=$(CURDIR)/.api-state/ss1.json
+
+docker-up-ss1-detached: ## run all services with ss1 config in detached mode
+	$(MAKE) docker-up-detached ASSET_FOLDER=ss1 STATE_FILE=$(CURDIR)/.api-state/ss1.json
+
+# Docker Compose with test config
+docker-up-test: ## run all services with test config
+	$(MAKE) docker-up ASSET_FOLDER=test STATE_FILE=$(CURDIR)/.api-state/test.json
+
+docker-up-test-detached: ## run all services with test config in detached mode
+	$(MAKE) docker-up-detached ASSET_FOLDER=test STATE_FILE=$(CURDIR)/.api-state/test.json
+
+# Individual service commands (for backward compatibility)
+docker-run-api: docker-ensure-state ## run only the api service (default: ss1)
+	ASSET_FOLDER=$(ASSET_FOLDER) STATE_FILE=$(STATE_FILE) REVEAL_DELAY_MS=$(REVEAL_DELAY_MS) docker compose up api
+
+docker-run-api-ss1: ## run the api service with ss1 config
+	$(MAKE) docker-run-api ASSET_FOLDER=ss1 STATE_FILE=$(CURDIR)/.api-state/ss1.json
+
+docker-run-api-test: ## run the api service with test config
+	$(MAKE) docker-run-api ASSET_FOLDER=test STATE_FILE=$(CURDIR)/.api-state/test.json
+
+docker-run-web: ## run only the web service
+	API_BASE_URL=$(API_BASE_URL) docker compose up web
+
+docker-stop-api: ## stop the api service
+	docker compose stop api
+
+docker-stop-web: ## stop the web service
+	docker compose stop web
