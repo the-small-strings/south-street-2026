@@ -46,7 +46,7 @@ class App:
         self.led_line_win_2 = LED(pins.LED_LINE_WIN_2)
         self.led_line_win_3 = LED(pins.LED_LINE_WIN_3)
 
-    def update_win_leds(self) -> bool:
+    def update_win_leds(self, output=True) -> bool:
         """Update the house and line win LEDs based on game state.
         Returns True if successful, False otherwise."""
         state = api.get_game_state()
@@ -66,8 +66,9 @@ class App:
         self.led_line_win_2.value = 1 if line_wins >= 2 else 0
         self.led_line_win_3.value = 1 if line_wins >= 3 else 0
 
-        print(
-            f"Updated LEDs - House wins: {house_wins}, Line wins: {line_wins}")
+        if output:
+            print(
+                f"Updated LEDs - House wins: {house_wins}, Line wins: {line_wins}")
         return True
 
     def wrap_button_handler(self, func=None, *, name="", button=None):
@@ -133,16 +134,19 @@ class App:
             # Check if it's time to update win LEDs (every 2 seconds)
             if current_time - last_update_time >= update_interval:
                 last_update_time = current_time
-                if self.update_win_leds():
+                last_connected = self.connected
+                if self.update_win_leds(output=False):
                     # Successful - set connected and update LEDs
                     self.connected = True
                     self.led_error.off()
                     self.led_ready.on()
-                    print("Connected to API")
+                    if not last_connected:
+                        print("Connected to API")
                 else:
                     # Failed - set disconnected
                     self.connected = False
-                    print("Failed to connect to API")
+                    if last_connected:
+                        print("Failed to connect to API")
         
         print("Stopping application...")
         self.led_ready.off()

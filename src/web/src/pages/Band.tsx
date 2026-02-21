@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise, Star, House, CaretLeft, CaretRight, X, CaretDown, CaretUp, SpeakerHigh } from '@phosphor-icons/react'
+import { MusicNote, Trophy, Keyboard, ListChecks, ArrowCounterClockwise, ArrowsClockwise, Star, House, CaretLeft, CaretRight, X, CaretDown, CaretUp, SpeakerHigh } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { BingoCard, GameState, GigState, SongPage } from '@/lib/types'
 import { BingoCardDisplay } from '@/components/BingoCardDisplay'
@@ -19,6 +19,7 @@ export function Band() {
 	const [gameState, setGameState] = useState<GameState | null>(null)
 	const [currentInfo, setCurrentInfo] = useState<GigState | null>(null)
 	const [loading, setLoading] = useState(true)
+	const [isRefreshing, setIsRefreshing] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [testPressedKeys, setTestPressedKeys] = useState<string[]>([])
 	const [isPlayingWalkOn, setIsPlayingWalkOn] = useState(false)
@@ -84,26 +85,32 @@ export function Band() {
 			})
 	}, [isPlayingWalkOn])
 
+	const loadState = useCallback(async (showLoadingState = false) => {
+		try {
+			if (showLoadingState) {
+				setLoading(true)
+			} else {
+				setIsRefreshing(true)
+			}
+			const [fullState, current] = await Promise.all([
+				api.getFullGameState(),
+				api.getCurrentGigState()
+			])
+			setGameState(fullState)
+			setCurrentInfo(current)
+			setError(null)
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Failed to load game state')
+		} finally {
+			setLoading(false)
+			setIsRefreshing(false)
+		}
+	}, [])
+
 	// Load initial state
 	useEffect(() => {
-		const loadInitialState = async () => {
-			try {
-				setLoading(true)
-				const [fullState, current] = await Promise.all([
-					api.getFullGameState(),
-					api.getCurrentGigState()
-				])
-				setGameState(fullState)
-				setCurrentInfo(current)
-				setError(null)
-			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Failed to load game state')
-			} finally {
-				setLoading(false)
-			}
-		}
-		loadInitialState()
-	}, [])
+		loadState(true)
+	}, [loadState])
 
 	const handleAdvance = useCallback(async () => {
 		try {
@@ -144,13 +151,19 @@ export function Band() {
 	}, [currentInfo])
 
 	const handleReset = useCallback(async () => {
+		const confirmed = window.confirm('Are you sure you want to reset the game state?')
+		if (!confirmed) return
 		try {
 			await api.resetGame()
-			// State updates handled by socket event
+			await loadState()
 		} catch (err) {
 			console.error('Failed to reset:', err)
 		}
-	}, [])
+	}, [loadState])
+
+	const handleRefresh = useCallback(async () => {
+		await loadState()
+	}, [loadState])
 
 	// Keyboard handlers
 	useEffect(() => {
@@ -173,7 +186,6 @@ export function Band() {
 					e.preventDefault()
 					await handleAdvance()
 				} else {
-					e.preventDefault()
 					const keyLabel = e.key.length === 1 ? e.key.toUpperCase() : e.code
 					emitTestKeyPress(keyLabel)
 					// Display handled by socket event
@@ -222,12 +234,15 @@ export function Band() {
 			} else if (e.key === 'Backspace') {
 				e.preventDefault()
 				await handleGoBack()
+			} else if (e.key === 'r' || e.key === 'R') {
+				e.preventDefault()
+				await handleRefresh()
 			}
 		}
 
 		window.addEventListener('keydown', handleKeyDown)
 		return () => window.removeEventListener('keydown', handleKeyDown)
-	}, [currentInfo, modalOpen, handleAdvance, handleGoBack, handleBattleChoice, handleClearBattleChoice, emitTestKeyPress])
+	}, [currentInfo, modalOpen, handleAdvance, handleGoBack, handleBattleChoice, handleClearBattleChoice, handleRefresh, emitTestKeyPress])
 
 	// Scroll current song into view
 	useEffect(() => {
@@ -332,8 +347,18 @@ export function Band() {
 						<div className="flex items-center gap-2 md:gap-4 shrink-0">
 							<div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
 								<Keyboard size={20} />
-								<span>Space / B / O / Backspace</span>
+								<span>Space / B / O / Backspace / R</span>
 							</div>
+							<Button
+								onClick={handleRefresh}
+								variant="outline"
+								size="sm"
+								disabled={isRefreshing}
+								className="gap-1 md:gap-2 px-2 md:px-3"
+							>
+								<ArrowsClockwise size={16} className={isRefreshing ? 'animate-spin' : ''} />
+								<span className="hidden sm:inline">Refresh</span>
+							</Button>
 							<Button
 								onClick={handleReset}
 								variant="outline"
