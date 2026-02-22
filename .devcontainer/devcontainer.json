@@ -17,7 +17,8 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"Tyriar.luna-paint"
+				"Tyriar.luna-paint",
+				"yzhang.markdown-all-in-one"
 			]
 		}
 	},
