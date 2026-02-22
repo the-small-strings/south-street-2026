@@ -356,6 +356,7 @@ class GameStateManager {
     const pages: Page[] = [];
     pages.push(this.createBasicPage('test'));
     pages.push(this.createBasicPage('welcome'));
+    pages.push(this.createBasicPage('walkOnPrep'));
     pages.push(this.createBasicPage('intro'));
     for (let i = 0; i < this.songs.length; i++) {
       const songPage = this.createSongPage(i);
@@ -449,6 +450,7 @@ class GameStateManager {
     switch (type) {
       case 'test': return 'Test Screen';
       case 'welcome': return 'Welcome';
+      case 'walkOnPrep': return 'Walk-on Prep';
       case 'intro': return 'Get Ready';
       case 'setBreak': return 'Set Break';
       case 'end': return 'The End';

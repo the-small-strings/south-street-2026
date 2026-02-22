@@ -74,6 +74,7 @@ export function Audience() {
       <AnimatePresence mode="wait">
         {pageType === 'test' && <TestScreen key="test" />}
         {pageType === 'welcome' && <WelcomeScreen key="welcome" />}
+        {pageType === 'walkOnPrep' && <div key="walkOnPrep" className="h-screen w-screen bg-black" />}
         {/* {pageType === 'intro' && <IntroScreenCopilot key="intro" />} */}
         {pageType === 'intro' && <IntroScreenFilmStyle key="intro" introAnimationStarted={introAnimationStarted} />}
         {pageType === 'setBreak' && <SetBreakScreen key="setBreak" />}

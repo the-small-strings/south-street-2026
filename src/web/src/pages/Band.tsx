@@ -197,7 +197,7 @@ export function Band() {
 				e.preventDefault()
 				
 				// Handle special pages - always allow advancing
-				if (pageType === 'welcome' || pageType === 'intro' || pageType === 'setBreak') {
+				if (pageType === 'welcome' || pageType === 'walkOnPrep' || pageType === 'intro' || pageType === 'setBreak') {
 					await handleAdvance()
 					return
 				}
@@ -328,6 +328,7 @@ export function Band() {
 		switch (pageType) {
 			case 'test': return 'Test Screen'
 			case 'welcome': return 'Welcome Screen'
+			case 'walkOnPrep': return 'Walk-on Prep'
 			case 'intro': return 'Intro'
 			case 'setBreak': return 'Set Break'
 			case 'end': return 'End Screen'
@@ -468,6 +469,25 @@ export function Band() {
 											</h2>
 											<p className="text-sm md:text-lg text-muted-foreground mt-1 md:mt-2">
 												Welcome screen is being displayed
+											</p>
+										</div>
+									</div>
+									<div className="hidden md:block absolute bottom-4 right-8 text-muted-foreground text-sm">
+										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
+									</div>
+								</Card>
+							) : pageType === 'walkOnPrep' ? (
+								<Card className="p-4 md:p-8 relative overflow-hidden bg-black border-border">
+									<div className="flex flex-col items-center justify-center gap-3 md:gap-4 min-h-[220px] md:min-h-[280px]">
+										<div className="text-center">
+											<div className="text-xs md:text-sm text-muted-foreground mb-1 md:mb-2 uppercase tracking-wide">
+												Audience View
+											</div>
+											<h2 className="text-2xl md:text-4xl font-bold tracking-tight text-white">
+												Walk-on Prep
+											</h2>
+											<p className="text-sm md:text-lg text-muted-foreground mt-1 md:mt-2">
+												Black transition screen active
 											</p>
 										</div>
 									</div>

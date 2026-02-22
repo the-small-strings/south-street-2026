@@ -3,10 +3,16 @@
 {
 	"name": "Python 3",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/python:2-3.13-bookworm",
+	"build": {
+		// Path is relataive to the devcontainer.json file.
+		"dockerfile": "Dockerfile"
+	},
 	"features": {
 		"ghcr.io/devcontainers/features/node:1": {},
-		"ghcr.io/stuartleeks/dev-container-features/shell-history:0": {}
+		"ghcr.io/stuartleeks/dev-container-features/shell-history:0": {},
+		"ghcr.io/devcontainers/features/go": {
+			"version": "1.26"
+		}
 	},
 	"customizations": {
 		"vscode": {
@@ -22,7 +28,7 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [3001,5000]
 
-	,"postCreateCommand": "./post-create.sh"
+	,"postCreateCommand": ".devcontainer/post-create.sh"
 
 	// Configure tool-specific properties.
 	// "customizations": {},

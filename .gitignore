@@ -1,2 +1,5 @@
 # API state files
 .api-state/
+
+
+*.exe

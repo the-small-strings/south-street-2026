@@ -89,3 +89,7 @@ docker-stop-api: ## stop the api service
 
 docker-stop-web: ## stop the web service
 	docker compose stop web
+
+# Go build commands
+build-walkon-helper-windows: ## build the walkon-helper for Windows
+	cd src/walkon-helper && GOOS=windows GOARCH=amd64 go build -o walkon-helper.exe .
