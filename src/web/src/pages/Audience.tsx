@@ -5,9 +5,22 @@ import type { GigState, BattleSong, SongPage } from '@/lib/types'
 import * as api from '@/lib/api'
 import { TestScreen } from './audience/TestScreen'
 import { WelcomeScreen } from './audience/WelcomeScreen'
+// GetReady screen variants - uncomment one to use:
+// import { GetReadyScreen } from './audience/GetReadyScreen'                             // Simple fade
+// import { GetReadyScreenSwirl as GetReadyScreen } from './audience/GetReadyScreenSwirl'       // Drain swirl
+// import { GetReadyScreenPixelate as GetReadyScreen } from './audience/GetReadyScreenPixelate' // Pixelate + fade
+// import { GetReadyScreenLiquid as GetReadyScreen } from './audience/GetReadyScreenLiquid'     // Liquid drip
+// import { GetReadyScreenShatter as GetReadyScreen } from './audience/GetReadyScreenShatter'   // Glass shatter
+// import { GetReadyScreenCRT as GetReadyScreen } from './audience/GetReadyScreenCRT'           // CRT power off
+// import { GetReadyScreenRipple as GetReadyScreen } from './audience/GetReadyScreenRipple'     // Water ripple
+import { GetReadyScreenVCRCRT as GetReadyScreen } from './audience/GetReadyScreenVCRCRT'           // VCR effect followed by CRT
+// import { GetReadyScreenBlackHole as GetReadyScreen } from './audience/GetReadyScreenBlackHole' // Black hole
+// GetReadyAgain screen variants - uncomment one to use:
+// import { GetReadyAgainScreen } from './audience/GetReadyAgainScreen'                             // Typing + fade
+// import { GetReadyAgainScreenPixelate as GetReadyAgainScreen } from './audience/GetReadyAgainScreenPixelate' // Pixelate + fade (starts after typing endpoint)
+import { GetReadyAgainScreenCRT as GetReadyAgainScreen } from './audience/GetReadyAgainScreenCRT'           // CRT power off (starts after typing endpoint)
 import { FixedSongDisplay } from './audience/FixedSongDisplay'
 import { BattleSongDisplay } from './audience/BattleSongDisplay'
-import { IntroScreenCopilot } from './audience/IntroScreenCopilot'
 import { IntroScreenFilmStyle } from './audience/IntroScreenFilmStyle'
 import { EndScreen } from './audience/EndScreen'
 import { SetBreakScreen } from './audience/SetBreakScreen'
@@ -74,10 +87,13 @@ export function Audience() {
       <AnimatePresence mode="wait">
         {pageType === 'test' && <TestScreen key="test" />}
         {pageType === 'welcome' && <WelcomeScreen key="welcome" />}
+        {pageType === 'getReady' && <GetReadyScreen key="getReady" />}
         {pageType === 'walkOnPrep' && <div key="walkOnPrep" className="h-screen w-screen bg-black" />}
         {/* {pageType === 'intro' && <IntroScreenCopilot key="intro" />} */}
         {pageType === 'intro' && <IntroScreenFilmStyle key="intro" introAnimationStarted={introAnimationStarted} />}
         {pageType === 'setBreak' && <SetBreakScreen key="setBreak" />}
+        {pageType === 'getReadyAgain' && <GetReadyAgainScreen key="getReadyAgain" />}
+        {pageType === 'comeBackPrep' && <div key="comeBackPrep" className="h-screen w-screen bg-black" />}
         {pageType === 'end' && <EndScreen key="end" />}
         {pageType === 'song' && currentSong && (
           currentSong.type === 'fixed' ? (

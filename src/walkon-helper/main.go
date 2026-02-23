@@ -275,17 +275,27 @@ func (r *triggerRunner) onStateUpdate(state gigState) {
 	}
 
 	transition := stateTransition{from: *prev, to: state}
-	if !isForwardWelcomeToPrep(transition) {
+	if !shouldTriggerSequence(transition) {
 		return
 	}
 
 	r.tryRunSequence(transition)
 }
 
-func isForwardWelcomeToPrep(tr stateTransition) bool {
-	return tr.from.CurrentPage.Type == "welcome" &&
-		tr.to.CurrentPage.Type == "walkOnPrep" &&
-		tr.to.PageIndex > tr.from.PageIndex
+func shouldTriggerSequence(tr stateTransition) bool {
+	// Trigger on welcome -> getReady (start of show)
+	if tr.from.CurrentPage.Type == "welcome" &&
+		tr.to.CurrentPage.Type == "getReady" &&
+		tr.to.PageIndex > tr.from.PageIndex {
+		return true
+	}
+	// Trigger on setBreak -> getReadyAgain (return from break)
+	if tr.from.CurrentPage.Type == "setBreak" &&
+		tr.to.CurrentPage.Type == "getReadyAgain" &&
+		tr.to.PageIndex > tr.from.PageIndex {
+		return true
+	}
+	return false
 }
 
 func (r *triggerRunner) tryRunSequence(tr stateTransition) {

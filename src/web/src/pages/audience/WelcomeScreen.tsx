@@ -5,7 +5,7 @@ export function WelcomeScreen() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      exit={{ opacity: 1 }}
       className="h-screen w-screen flex flex-col relative overflow-hidden"
     >
       {/* Top half - Orange background with The Small Strings */}

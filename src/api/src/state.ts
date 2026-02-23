@@ -356,6 +356,7 @@ class GameStateManager {
     const pages: Page[] = [];
     pages.push(this.createBasicPage('test'));
     pages.push(this.createBasicPage('welcome'));
+    pages.push(this.createBasicPage('getReady'));
     pages.push(this.createBasicPage('walkOnPrep'));
     pages.push(this.createBasicPage('intro'));
     for (let i = 0; i < this.songs.length; i++) {
@@ -365,6 +366,8 @@ class GameStateManager {
       }
       if (setBreakAfter && this.songs[i].type === 'fixed' && this.songs[i].name === setBreakAfter) {
         pages.push(this.createBasicPage('setBreak'));
+        pages.push(this.createBasicPage('getReadyAgain'));
+        pages.push(this.createBasicPage('comeBackPrep'));
       }
     }
     pages.push(this.createBasicPage('end'));
@@ -450,9 +453,12 @@ class GameStateManager {
     switch (type) {
       case 'test': return 'Test Screen';
       case 'welcome': return 'Welcome';
+      case 'getReady': return 'Get Ready';
       case 'walkOnPrep': return 'Walk-on Prep';
       case 'intro': return 'Get Ready';
       case 'setBreak': return 'Set Break';
+      case 'getReadyAgain': return 'Get Ready Again';
+      case 'comeBackPrep': return 'Come Back Prep';
       case 'end': return 'The End';
     }
   }

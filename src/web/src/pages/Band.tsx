@@ -197,7 +197,7 @@ export function Band() {
 				e.preventDefault()
 				
 				// Handle special pages - always allow advancing
-				if (pageType === 'welcome' || pageType === 'walkOnPrep' || pageType === 'intro' || pageType === 'setBreak') {
+				if (pageType === 'welcome' || pageType === 'getReady' || pageType === 'walkOnPrep' || pageType === 'intro' || pageType === 'setBreak' || pageType === 'getReadyAgain' || pageType === 'comeBackPrep') {
 					await handleAdvance()
 					return
 				}
@@ -328,9 +328,12 @@ export function Band() {
 		switch (pageType) {
 			case 'test': return 'Test Screen'
 			case 'welcome': return 'Welcome Screen'
+			case 'getReady': return 'Get Ready'
 			case 'walkOnPrep': return 'Walk-on Prep'
 			case 'intro': return 'Intro'
 			case 'setBreak': return 'Set Break'
+			case 'getReadyAgain': return 'Get Ready Again'
+			case 'comeBackPrep': return 'Come Back Prep'
 			case 'end': return 'End Screen'
 			case 'song': return `Song ${actualSongNumber} of ${actualTotalSongs}`
 		}
@@ -476,6 +479,25 @@ export function Band() {
 										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
 									</div>
 								</Card>
+							) : pageType === 'getReady' ? (
+								<Card className="p-4 md:p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-black/30 border-orange-500/20">
+									<div className="flex flex-col items-center justify-center gap-3 md:gap-4 min-h-[220px] md:min-h-[280px]">
+										<div className="text-center">
+											<div className="text-xs md:text-sm text-muted-foreground mb-1 md:mb-2 uppercase tracking-wide">
+												Audience View
+											</div>
+											<h2 className="text-2xl md:text-4xl font-bold tracking-tight text-orange-500">
+												Get Ready
+											</h2>
+											<p className="text-sm md:text-lg text-muted-foreground mt-1 md:mt-2">
+												Logo is fading to black
+											</p>
+										</div>
+									</div>
+									<div className="hidden md:block absolute bottom-4 right-8 text-muted-foreground text-sm">
+										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
+									</div>
+								</Card>
 							) : pageType === 'walkOnPrep' ? (
 								<Card className="p-4 md:p-8 relative overflow-hidden bg-black border-border">
 									<div className="flex flex-col items-center justify-center gap-3 md:gap-4 min-h-[220px] md:min-h-[280px]">
@@ -528,6 +550,44 @@ export function Band() {
 											</h2>
 											<p className="text-sm md:text-lg text-orange-500 mt-1 md:mt-2">
 												Take a short break!
+											</p>
+										</div>
+									</div>
+									<div className="hidden md:block absolute bottom-4 right-8 text-muted-foreground text-sm">
+										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
+									</div>
+								</Card>
+							) : pageType === 'getReadyAgain' ? (
+								<Card className="p-4 md:p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-black/30 border-orange-500/20">
+									<div className="flex flex-col items-center justify-center gap-3 md:gap-4 min-h-[220px] md:min-h-[280px]">
+										<div className="text-center">
+											<div className="text-xs md:text-sm text-muted-foreground mb-1 md:mb-2 uppercase tracking-wide">
+												Audience View
+											</div>
+											<h2 className="text-2xl md:text-4xl font-bold tracking-tight text-orange-500">
+												Get Ready Again
+											</h2>
+											<p className="text-sm md:text-lg text-muted-foreground mt-1 md:mt-2">
+												Fading to black for second set
+											</p>
+										</div>
+									</div>
+									<div className="hidden md:block absolute bottom-4 right-8 text-muted-foreground text-sm">
+										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
+									</div>
+								</Card>
+							) : pageType === 'comeBackPrep' ? (
+								<Card className="p-4 md:p-8 relative overflow-hidden bg-black border-border">
+									<div className="flex flex-col items-center justify-center gap-3 md:gap-4 min-h-[220px] md:min-h-[280px]">
+										<div className="text-center">
+											<div className="text-xs md:text-sm text-muted-foreground mb-1 md:mb-2 uppercase tracking-wide">
+												Audience View
+											</div>
+											<h2 className="text-2xl md:text-4xl font-bold tracking-tight text-white">
+												Come Back Prep
+											</h2>
+											<p className="text-sm md:text-lg text-muted-foreground mt-1 md:mt-2">
+												Black transition screen active
 											</p>
 										</div>
 									</div>
