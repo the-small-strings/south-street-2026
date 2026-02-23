@@ -33,6 +33,10 @@ type config struct {
 	HTTPTimeout        time.Duration
 	ProcessNames       []string
 	KillSettleDuration time.Duration
+	QobuzLaunchTarget  string
+	QobuzWindowTimeout time.Duration
+	QobuzFocusTimeout  time.Duration
+	QobuzWindowPoll    time.Duration
 }
 
 type gigState struct {
@@ -48,12 +52,13 @@ type stateTransition struct {
 }
 
 type triggerRunner struct {
-	cfg     config
-	client  *http.Client
-	mu      sync.Mutex
-	running bool
-	lastRun time.Time
-	prev    *gigState
+	cfg             config
+	client          *http.Client
+	mu              sync.Mutex
+	running         bool
+	setBreakRunning bool
+	lastRun         time.Time
+	prev            *gigState
 }
 
 func main() {
@@ -151,7 +156,7 @@ func loadConfig() (config, error) {
 		socketURL = derived
 	}
 
-	fadeSeconds := getEnvFloat("FADE_DOWN_SECONDS", 10)
+	fadeSeconds := getEnvFloat("FADE_DOWN_SECONDS", 3)
 	if fadeSeconds < 0 {
 		return config{}, errors.New("FADE_DOWN_SECONDS must be >= 0")
 	}
@@ -165,10 +170,24 @@ func loadConfig() (config, error) {
 	reconnectSeconds := getEnvFloat("RECONNECT_SECONDS", 2)
 	httpTimeoutSeconds := getEnvFloat("HTTP_TIMEOUT_SECONDS", 5)
 	killSettleMs := getEnvInt("KILL_SETTLE_MS", 150)
+	windowWaitSeconds := getEnvFloat("QOBUZ_WINDOW_WAIT_SECONDS", 15)
+	focusTimeoutSeconds := getEnvFloat("QOBUZ_FOCUS_TIMEOUT_SECONDS", 10)
+	windowPollMs := getEnvInt("QOBUZ_WINDOW_POLL_MS", 250)
 
 	processNames := parseProcessList(getEnv("QOBUZ_PROCESS_NAMES", "Qobuz.exe"))
 	if len(processNames) == 0 {
 		processNames = []string{"Qobuz.exe"}
+	}
+
+	qobuzLaunchTarget := strings.TrimSpace(getEnv("QOBUZ_LAUNCH_TARGET", ""))
+	if windowWaitSeconds <= 0 {
+		windowWaitSeconds = 15
+	}
+	if windowPollMs <= 0 {
+		windowPollMs = 250
+	}
+	if focusTimeoutSeconds <= 0 {
+		focusTimeoutSeconds = 3
 	}
 
 	return config{
@@ -181,6 +200,10 @@ func loadConfig() (config, error) {
 		HTTPTimeout:        time.Duration(httpTimeoutSeconds * float64(time.Second)),
 		ProcessNames:       processNames,
 		KillSettleDuration: time.Duration(killSettleMs) * time.Millisecond,
+		QobuzLaunchTarget:  qobuzLaunchTarget,
+		QobuzWindowTimeout: time.Duration(windowWaitSeconds * float64(time.Second)),
+		QobuzFocusTimeout:  time.Duration(focusTimeoutSeconds * float64(time.Second)),
+		QobuzWindowPoll:    time.Duration(windowPollMs) * time.Millisecond,
 	}, nil
 }
 
@@ -275,11 +298,19 @@ func (r *triggerRunner) onStateUpdate(state gigState) {
 	}
 
 	transition := stateTransition{from: *prev, to: state}
+	if shouldTriggerSetBreakLaunch(transition) {
+		r.tryRunSetBreakLaunch(transition)
+	}
+
 	if !shouldTriggerSequence(transition) {
 		return
 	}
 
 	r.tryRunSequence(transition)
+}
+
+func shouldTriggerSetBreakLaunch(tr stateTransition) bool {
+	return tr.to.CurrentPage.Type == "setBreak" && tr.to.PageIndex > tr.from.PageIndex
 }
 
 func shouldTriggerSequence(tr stateTransition) bool {
@@ -327,6 +358,32 @@ func (r *triggerRunner) tryRunSequence(tr stateTransition) {
 			return
 		}
 		log.Printf("sequence completed successfully")
+	}()
+}
+
+func (r *triggerRunner) tryRunSetBreakLaunch(tr stateTransition) {
+	r.mu.Lock()
+	if r.setBreakRunning {
+		r.mu.Unlock()
+		log.Printf("set break launch already running; ignoring duplicate trigger")
+		return
+	}
+	r.setBreakRunning = true
+	r.mu.Unlock()
+
+	go func() {
+		defer func() {
+			r.mu.Lock()
+			r.setBreakRunning = false
+			r.mu.Unlock()
+		}()
+
+		log.Printf("detected set break transition %s(%d) -> %s(%d)", tr.from.CurrentPage.Type, tr.from.PageIndex, tr.to.CurrentPage.Type, tr.to.PageIndex)
+		if err := launchQobuzAndPlay(r.cfg); err != nil {
+			log.Printf("set break qobuz launch/play failed: %v", err)
+			return
+		}
+		log.Printf("set break qobuz launch/play completed")
 	}()
 }
 
