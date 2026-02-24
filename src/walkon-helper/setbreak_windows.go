@@ -53,6 +53,18 @@ func launchQobuzAndPlay(cfg config) error {
 	return nil
 }
 
+func restartQobuzAndPlay(cfg config) error {
+	fmt.Println("Restarting Qobuz process before end-screen play")
+	if err := killProcesses(cfg.ProcessNames); err != nil {
+		return fmt.Errorf("kill qobuz process: %w", err)
+	}
+	if cfg.KillSettleDuration > 0 {
+		time.Sleep(cfg.KillSettleDuration)
+	}
+
+	return launchQobuzAndPlay(cfg)
+}
+
 func launchQobuz(target string) error {
 	target = strings.TrimSpace(target)
 	if target == "" || strings.EqualFold(target, "qobuz://") {

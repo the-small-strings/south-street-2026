@@ -95,6 +95,7 @@ export function Audience() {
         {pageType === 'getReadyAgain' && <GetReadyAgainScreen key="getReadyAgain" />}
         {pageType === 'comeBackPrep' && <div key="comeBackPrep" className="h-screen w-screen bg-black" />}
         {pageType === 'end' && <EndScreen key="end" />}
+        {pageType === 'end2' && <EndScreen key="end2" />}
         {pageType === 'song' && currentSong && (
           currentSong.type === 'fixed' ? (
             <FixedSongDisplay 

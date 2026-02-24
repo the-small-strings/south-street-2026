@@ -371,6 +371,7 @@ class GameStateManager {
       }
     }
     pages.push(this.createBasicPage('end'));
+    pages.push(this.createBasicPage('end2'));
     return pages;
   }
 
@@ -399,8 +400,8 @@ class GameStateManager {
         }
       }
     }
-    // If on end page, return last song index
-    if (this.currentPage.type === 'end') {
+    // If on end pages, return last song index
+    if (this.currentPage.type === 'end' || this.currentPage.type === 'end2') {
       return this.songs.length - 1;
     }
     return -1;
@@ -460,6 +461,7 @@ class GameStateManager {
       case 'getReadyAgain': return 'Get Ready Again';
       case 'comeBackPrep': return 'Come Back Prep';
       case 'end': return 'The End';
+      case 'end2': return 'The End (2)';
     }
   }
   // Helper to create a BasicPage

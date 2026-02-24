@@ -33,9 +33,9 @@ router.post('/next', (req: Request, res: Response) => {
   const currentState = gameState.getCurrentGigState();
   const currentPage = currentState.currentPage;
 
-  // Cannot advance from end page
-  if (currentPage.type === 'end') {
-    res.status(400).json({ error: 'Cannot advance from end page' });
+  // Cannot advance from final end page
+  if (currentPage.type === 'end2') {
+    res.status(400).json({ error: 'Cannot advance from final end page' });
     return;
   }
 

@@ -20,10 +20,12 @@ export function Band() {
 	const [currentInfo, setCurrentInfo] = useState<GigState | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [isRefreshing, setIsRefreshing] = useState(false)
+	const [isAdvancing, setIsAdvancing] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [testPressedKeys, setTestPressedKeys] = useState<string[]>([])
 	const [isPlayingWalkOn, setIsPlayingWalkOn] = useState(false)
 	const walkOnAudioRef = useRef<HTMLAudioElement | null>(null)
+	const isAdvancingRef = useRef(false)
 
 	const [modalOpen, setModalOpen] = useState(false)
 	const [selectedSongIndex, setSelectedSongIndex] = useState<number | null>(null)
@@ -113,11 +115,17 @@ export function Band() {
 	}, [loadState])
 
 	const handleAdvance = useCallback(async () => {
+		if (isAdvancingRef.current) return
 		try {
+			isAdvancingRef.current = true
+			setIsAdvancing(true)
 			await api.advanceToNextSong()
 			// State updates handled by socket event
 		} catch (err) {
 			console.error('Failed to advance:', err)
+		} finally {
+			isAdvancingRef.current = false
+			setIsAdvancing(false)
 		}
 	}, [])
 
@@ -197,13 +205,13 @@ export function Band() {
 				e.preventDefault()
 				
 				// Handle special pages - always allow advancing
-				if (pageType === 'welcome' || pageType === 'getReady' || pageType === 'walkOnPrep' || pageType === 'intro' || pageType === 'setBreak' || pageType === 'getReadyAgain' || pageType === 'comeBackPrep') {
+				if (pageType === 'welcome' || pageType === 'getReady' || pageType === 'walkOnPrep' || pageType === 'intro' || pageType === 'setBreak' || pageType === 'getReadyAgain' || pageType === 'comeBackPrep' || pageType === 'end') {
 					await handleAdvance()
 					return
 				}
 				
-				// Can't advance from end page
-				if (pageType === 'end') {
+				// Can't advance from final end page
+				if (pageType === 'end2') {
 					return
 				}
 				
@@ -335,6 +343,7 @@ export function Band() {
 			case 'getReadyAgain': return 'Get Ready Again'
 			case 'comeBackPrep': return 'Come Back Prep'
 			case 'end': return 'End Screen'
+				case 'end2': return 'End Screen'
 			case 'song': return `Song ${actualSongNumber} of ${actualTotalSongs}`
 		}
 	}
@@ -378,7 +387,7 @@ export function Band() {
 					<div className="space-y-2">
 						<div className="flex items-center justify-between text-xs md:text-sm">
 							<span className="text-muted-foreground">
-								{getPageLabel()}
+								{`${getPageLabel()} (${pageType})`}
 							</span>
 							<span className="text-muted-foreground">{Math.round(progress)}%</span>
 						</div>
@@ -596,6 +605,40 @@ export function Band() {
 									</div>
 								</Card>
 							) : pageType === 'end' ? (
+								<Card className="p-4 md:p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-transparent border-orange-500/30">
+									<div className="flex flex-col items-center justify-center gap-3 md:gap-6">
+										<div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-6">
+											<div className="text-4xl md:text-6xl">🍻</div>
+											<div className="text-center">
+												<div className="text-xs md:text-sm text-muted-foreground mb-1 md:mb-2 uppercase tracking-wide">
+													Audience View
+												</div>
+												<h2 className="text-2xl md:text-4xl font-bold tracking-tight">
+													Logo
+												</h2>
+												<p className="text-sm md:text-lg text-orange-500 mt-1 md:mt-2">
+													End of the Gig!
+												</p>
+											</div>
+										</div>
+										<Badge variant="outline" className="mt-2">
+											Next: End Screen 2
+										</Badge>
+										<div className="md:hidden mt-2">
+											<Button
+												onClick={handleAdvance}
+												size="sm"
+												disabled={isAdvancing}
+											>
+												Continue to End Screen 2
+											</Button>
+										</div>
+										</div>
+									<div className="hidden md:block absolute bottom-4 right-8 text-muted-foreground text-sm">
+										Press <kbd className="px-2 py-1 bg-muted rounded">Space</kbd> to continue
+									</div>
+								</Card>
+							) : pageType === 'end2' ? (
 								<Card className="p-4 md:p-8 relative overflow-hidden bg-gradient-to-br from-orange-500/10 to-transparent border-orange-500/30">
 									<div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-6">
 										<div className="text-4xl md:text-6xl">🍻</div>
@@ -952,7 +995,8 @@ export function Band() {
 							size="lg"
 							className="flex-1 gap-2 h-12 touch-manipulation active:scale-95 transition-transform"
 							disabled={
-								pageType === 'end' || 
+								isAdvancing ||
+								pageType === 'end2' || 
 								(currentSong?.type === 'battle' && !currentSong.selected)
 							}
 						>
