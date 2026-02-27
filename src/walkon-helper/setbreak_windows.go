@@ -43,8 +43,11 @@ func launchQobuzAndPlay(cfg config) error {
 		return fmt.Errorf("focus qobuz window: %w", err)
 	}
 
-	fmt.Println("Found window... waiting...")
-	time.Sleep(3 * time.Second)
+	fmt.Println("Waiting for Qobuz to become input-ready")
+	if err := waitForQobuzInputReady(cfg.ProcessNames, cfg.QobuzWindowTimeout, cfg.QobuzWindowPoll); err != nil {
+		return fmt.Errorf("wait for qobuz input readiness: %w", err)
+	}
+
 	fmt.Println("Sending Ctrl+RightArrow to trigger play of next track")
 	if err := sendVKCtrlRightArrow(); err != nil {
 		return fmt.Errorf("send keys: %w", err)
@@ -183,6 +186,38 @@ func focusQobuzWindow(processNames []string, timeout, poll time.Duration) error 
 	}
 }
 
+func waitForQobuzInputReady(processNames []string, timeout, poll time.Duration) error {
+	if timeout <= 0 {
+		timeout = 15 * time.Second
+	}
+	if poll <= 0 {
+		poll = 250 * time.Millisecond
+	}
+
+	normalized := normalizeProcessNames(processNames)
+	deadline := time.Now().Add(timeout)
+	var lastErr error
+
+	for {
+		ready, err := isQobuzInputReady(normalized)
+		if err == nil && ready {
+			return nil
+		}
+		if err != nil {
+			lastErr = err
+		}
+
+		if time.Now().After(deadline) {
+			if lastErr != nil {
+				return fmt.Errorf("timeout after %s (last check error: %v)", timeout, lastErr)
+			}
+			return fmt.Errorf("timeout after %s", timeout)
+		}
+
+		time.Sleep(poll)
+	}
+}
+
 func focusAnyQobuzWindow(processNames []string) (bool, error) {
 	if len(processNames) == 0 {
 		processNames = []string{"Qobuz"}
@@ -247,6 +282,46 @@ func isAnyQobuzWindowVisible(processNames []string) (bool, error) {
 
 	script := fmt.Sprintf("$names = @(%s); $p = Get-Process -ErrorAction SilentlyContinue | Where-Object { $names -contains $_.ProcessName -and $_.MainWindowHandle -ne 0 } | Select-Object -First 1; if ($null -ne $p) { Write-Output '1' }", strings.Join(quoted, ","))
 	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", script)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("%v output=%s", err, strings.TrimSpace(string(output)))
+	}
+
+	return strings.TrimSpace(string(output)) == "1", nil
+}
+
+func isQobuzInputReady(processNames []string) (bool, error) {
+	if len(processNames) == 0 {
+		processNames = []string{"Qobuz"}
+	}
+
+	quoted := make([]string, 0, len(processNames))
+	for _, name := range processNames {
+		quoted = append(quoted, fmt.Sprintf("'%s'", escapePowerShellSingleQuotes(name)))
+	}
+
+	psScript := fmt.Sprintf(`$names = @(%s)
+$sig = @'
+[DllImport("user32.dll")]
+public static extern IntPtr GetForegroundWindow();
+'@
+Add-Type -Namespace Win32 -Name User32 -MemberDefinition $sig -ErrorAction SilentlyContinue | Out-Null
+
+$candidates = Get-Process -ErrorAction SilentlyContinue |
+  Where-Object { $names -contains $_.ProcessName -and $_.MainWindowHandle -ne 0 }
+
+if ($null -eq $candidates -or $candidates.Count -eq 0) { exit 0 }
+
+$foreground = [Win32.User32]::GetForegroundWindow()
+foreach ($proc in $candidates) {
+  if ($proc.Responding -and $proc.MainWindowHandle -eq $foreground) {
+    Write-Output '1'
+    exit 0
+  }
+}
+`, strings.Join(quoted, ","))
+
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", psScript)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return false, fmt.Errorf("%v output=%s", err, strings.TrimSpace(string(output)))
