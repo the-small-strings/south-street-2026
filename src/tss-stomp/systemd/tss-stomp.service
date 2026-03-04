@@ -1,0 +1,18 @@
+[Unit]
+Description=South Street stomp box service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=stuart
+WorkingDirectory=/home/stuart/source/tss-stomp
+EnvironmentFile=-/etc/default/tss-stomp
+ExecStart=/usr/bin/env python3 -m tss_stomp.main
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
