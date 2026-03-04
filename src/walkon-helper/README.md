@@ -11,10 +11,14 @@ On `welcome -> getReady` and `setBreak -> getReadyAgain` transitions:
 4. Restore original volume
 5. Call `POST /api/game/next` to auto-advance to `intro`
 
-On transition **to** `setBreak`:
-1. Launch the Qobuz app (`QOBUZ_LAUNCH_TARGET`)
-2. Wait for a visible Qobuz window
-3. Send `VK_PLAY` virtual key press
+On transition to the **last song before** `setBreak` and to the **last song before** `end` screens:
+1. Prelaunch Qobuz (`QOBUZ_LAUNCH_TARGET`) and wait for the Qobuz window
+2. Do **not** send `Ctrl+Right` yet
+
+On transition **to** `setBreak` and **to** `end2`:
+1. Focus Qobuz
+2. Attempt `Ctrl+Right` multiple times to start playback, skipping attempts if the window title already indicates playback, and waiting between failed attempts for app responsiveness
+3. For `end2`, optionally fall back to restart-and-play if `QOBUZ_RESTART_ON_END=true`
 
 If any step fails, it logs and leaves manual advance available.
 
@@ -27,7 +31,18 @@ If any step fails, it logs and leaves manual advance available.
 - `QOBUZ_PROCESS_NAMES` (default `Qobuz.exe`, comma-separated list supported)
 - `QOBUZ_LAUNCH_TARGET` (default empty: resolves `%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs` and uses a `*.lnk` containing `qobuz`; falls back to `qobuz://`)
 - `QOBUZ_WINDOW_WAIT_SECONDS` (default `15`)
+- `QOBUZ_FOCUS_TIMEOUT_SECONDS` (default `10`)
+- `QOBUZ_PLAYBACK_VERIFY_TIMEOUT_SECONDS` (default `6`)
+- `QOBUZ_CHECK_TIMEOUT_SECONDS` (default `8`)
+- `QOBUZ_TITLE_CHANGE_TIMEOUT_SECONDS` (legacy fallback; still honored)
 - `QOBUZ_WINDOW_POLL_MS` (default `250`)
+- `QOBUZ_PLAYBACK_START_MAX_ATTEMPTS` (default `8`)
+- `QOBUZ_PLAYBACK_RETRY_MIN_DELAY_MS` (default `800`)
+- `QOBUZ_FOCUS_STEP_DELAY_MS` (default `80`)
+- `QOBUZ_FOCUS_VERIFY_DELAY_MS` (default `120`)
+- `QOBUZ_KEY_SHORT_DELAY_MS` (default `20`)
+- `QOBUZ_KEY_LONG_DELAY_MS` (default `40`)
+- `QOBUZ_RESTART_ON_END` (default `true`)
 - `TRIGGER_COOLDOWN_SECONDS` (default `8`)
 - `RECONNECT_SECONDS` (default `2`)
 - `HTTP_TIMEOUT_SECONDS` (default `5`)

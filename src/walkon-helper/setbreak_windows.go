@@ -3,10 +3,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -26,7 +28,75 @@ var (
 	procKeybdEvent = user32.NewProc("keybd_event")
 )
 
+type qobuzPlaybackSnapshot struct {
+	Status     string `json:"status"`
+	Title      string `json:"title"`
+	PositionMs int64  `json:"positionMs"`
+	AppID      string `json:"appId"`
+}
+
 func launchQobuzAndPlay(cfg config) error {
+	return playQobuz(cfg)
+}
+
+func prelaunchQobuz(cfg config) error {
+	return ensureQobuzLaunched(cfg)
+}
+
+func playQobuz(cfg config) error {
+	if err := ensureQobuzLaunched(cfg); err != nil {
+		return err
+	}
+
+	fmt.Println("Bringing Qobuz window to foreground")
+	if err := focusQobuzWindow(cfg.ProcessNames, cfg.QobuzFocusTimeout, cfg.QobuzWindowPoll, cfg.QobuzFocusStepDelay, cfg.QobuzFocusVerifyDelay); err != nil {
+		return fmt.Errorf("focus qobuz window: %w", err)
+	}
+
+	fmt.Println("Waiting for Qobuz to become input-ready")
+	if err := waitForQobuzInputReady(cfg.ProcessNames, cfg.QobuzWindowTimeout, cfg.QobuzWindowPoll); err != nil {
+		return fmt.Errorf("wait for qobuz input readiness: %w", err)
+	}
+
+	before, err := getQobuzPlaybackSnapshot(cfg.ProcessNames)
+	if err != nil {
+		return fmt.Errorf("read qobuz playback snapshot before keypress: %w", err)
+	}
+	fmt.Printf("Qobuz playback before keypress: status=%q title=%q positionMs=%d appId=%q\n", before.Status, before.Title, before.PositionMs, before.AppID)
+
+	titlesBefore, err := getAnyQobuzWindowTitles(cfg.ProcessNames)
+	if err != nil {
+		return fmt.Errorf("read qobuz window titles before keypress: %w", err)
+	}
+	fmt.Printf("Qobuz window titles before keypress: %q\n", titlesBefore)
+
+	after, titlesAfter, err := attemptQobuzPlaybackStartWithRetries(
+		cfg.ProcessNames,
+		before,
+		titlesBefore,
+		cfg.QobuzPlaybackTimeout,
+		cfg.QobuzCheckTimeout,
+		cfg.QobuzWindowPoll,
+		cfg.QobuzPlaybackAttempts,
+		cfg.QobuzRetryMinDelay,
+		cfg.QobuzKeyShortDelay,
+		cfg.QobuzKeyLongDelay,
+	)
+	if err != nil {
+		return fmt.Errorf("verify qobuz playback start with retries: %w", err)
+	}
+	fmt.Printf("Qobuz playback after keypress: status=%q title=%q positionMs=%d appId=%q\n", after.Status, after.Title, after.PositionMs, after.AppID)
+	fmt.Printf("Qobuz window titles after keypress: %q\n", titlesAfter)
+
+	return nil
+}
+
+func ensureQobuzLaunched(cfg config) error {
+	visible, visibleErr := isAnyQobuzWindowVisible(cfg.ProcessNames)
+	if visibleErr == nil && visible {
+		fmt.Println("Qobuz window already visible; skipping launch")
+		return nil
+	}
 
 	fmt.Println("Launching Qobuz")
 	if err := launchQobuz(cfg.QobuzLaunchTarget); err != nil {
@@ -37,23 +107,96 @@ func launchQobuzAndPlay(cfg config) error {
 	if err := waitForQobuzWindow(cfg.ProcessNames, cfg.QobuzWindowTimeout, cfg.QobuzWindowPoll); err != nil {
 		return fmt.Errorf("wait for qobuz window: %w", err)
 	}
-
-	fmt.Println("Bringing Qobuz window to foreground")
-	if err := focusQobuzWindow(cfg.ProcessNames, cfg.QobuzFocusTimeout, cfg.QobuzWindowPoll); err != nil {
-		return fmt.Errorf("focus qobuz window: %w", err)
-	}
-
-	fmt.Println("Waiting for Qobuz to become input-ready")
-	if err := waitForQobuzInputReady(cfg.ProcessNames, cfg.QobuzWindowTimeout, cfg.QobuzWindowPoll); err != nil {
-		return fmt.Errorf("wait for qobuz input readiness: %w", err)
-	}
-
-	fmt.Println("Sending Ctrl+RightArrow to trigger play of next track")
-	if err := sendVKCtrlRightArrow(); err != nil {
-		return fmt.Errorf("send keys: %w", err)
-	}
-
 	return nil
+}
+
+func attemptQobuzPlaybackStartWithRetries(processNames []string, baseline qobuzPlaybackSnapshot, baselineTitles []string, verifyTimeout, checkTimeout, poll time.Duration, attempts int, retryMinDelay, keyShortDelay, keyLongDelay time.Duration) (qobuzPlaybackSnapshot, []string, error) {
+	if verifyTimeout <= 0 {
+		verifyTimeout = 6 * time.Second
+	}
+	if checkTimeout <= 0 {
+		checkTimeout = 2 * time.Second
+	}
+	if poll <= 0 {
+		poll = 250 * time.Millisecond
+	}
+	if attempts <= 0 {
+		attempts = 8
+	}
+	if retryMinDelay <= 0 {
+		retryMinDelay = 800 * time.Millisecond
+	}
+	if keyShortDelay <= 0 {
+		keyShortDelay = 20 * time.Millisecond
+	}
+	if keyLongDelay <= 0 {
+		keyLongDelay = 40 * time.Millisecond
+	}
+
+	retryDelay := verifyTimeout / time.Duration(attempts)
+	if retryDelay < retryMinDelay {
+		retryDelay = retryMinDelay
+	}
+
+	lastSnapshot := baseline
+	lastTitles := append([]string(nil), baselineTitles...)
+	var lastErr error
+
+	for attempt := 1; attempt <= attempts; attempt++ {
+		currentTitles, titleErr := getAnyQobuzWindowTitles(processNames)
+		if titleErr == nil {
+			lastTitles = append([]string(nil), currentTitles...)
+			if doesAnyWindowTitleIndicatePlaying(currentTitles) {
+				currentSnapshot, snapErr := getQobuzPlaybackSnapshot(processNames)
+				if snapErr == nil {
+					lastSnapshot = currentSnapshot
+				}
+				fmt.Printf("Qobuz window title indicates playback already running before attempt %d/%d\n", attempt, attempts)
+				return lastSnapshot, currentTitles, nil
+			}
+		} else {
+			lastErr = fmt.Errorf("read qobuz window titles before attempt %d: %w", attempt, titleErr)
+		}
+
+		fmt.Printf("Sending Ctrl+RightArrow attempt %d/%d to trigger play of next track\n", attempt, attempts)
+		if err := sendVKCtrlRightArrow(keyShortDelay, keyLongDelay); err != nil {
+			lastErr = fmt.Errorf("send keys attempt %d: %w", attempt, err)
+			if attempt < attempts {
+				time.Sleep(retryDelay)
+				continue
+			}
+			break
+		}
+
+		afterSnapshot, afterTitles, err := waitForQobuzPlaybackStart(processNames, baseline, baselineTitles, checkTimeout, poll)
+		if err == nil {
+			return afterSnapshot, afterTitles, nil
+		}
+
+		lastErr = err
+		latestSnapshot, snapErr := getQobuzPlaybackSnapshot(processNames)
+		if snapErr == nil {
+			lastSnapshot = latestSnapshot
+			baseline = latestSnapshot
+		}
+		latestTitles, latestTitlesErr := getAnyQobuzWindowTitles(processNames)
+		if latestTitlesErr == nil {
+			lastTitles = append([]string(nil), latestTitles...)
+			baselineTitles = append([]string(nil), latestTitles...)
+		}
+
+		if attempt < attempts {
+			fmt.Printf("Playback not confirmed after attempt %d/%d; waiting %s before retry\n", attempt, attempts, retryDelay)
+			// skip this delay as the playback already waits
+			// time.Sleep(retryDelay)
+		}
+	}
+
+	if lastErr != nil {
+		return qobuzPlaybackSnapshot{}, nil, fmt.Errorf("playback did not start after %d Ctrl+Right attempts (lastStatus=%q lastTitle=%q lastPositionMs=%d lastWindowTitles=%q): %w", attempts, lastSnapshot.Status, lastSnapshot.Title, lastSnapshot.PositionMs, lastTitles, lastErr)
+	}
+
+	return qobuzPlaybackSnapshot{}, nil, fmt.Errorf("playback did not start after %d Ctrl+Right attempts (lastStatus=%q lastTitle=%q lastPositionMs=%d lastWindowTitles=%q)", attempts, lastSnapshot.Status, lastSnapshot.Title, lastSnapshot.PositionMs, lastTitles)
 }
 
 func restartQobuzAndPlay(cfg config) error {
@@ -65,7 +208,7 @@ func restartQobuzAndPlay(cfg config) error {
 		time.Sleep(cfg.KillSettleDuration)
 	}
 
-	return launchQobuzAndPlay(cfg)
+	return playQobuz(cfg)
 }
 
 func launchQobuz(target string) error {
@@ -154,12 +297,18 @@ func waitForQobuzWindow(processNames []string, timeout, poll time.Duration) erro
 	}
 }
 
-func focusQobuzWindow(processNames []string, timeout, poll time.Duration) error {
+func focusQobuzWindow(processNames []string, timeout, poll, stepDelay, verifyDelay time.Duration) error {
 	if timeout <= 0 {
 		timeout = 3 * time.Second
 	}
 	if poll <= 0 {
 		poll = 250 * time.Millisecond
+	}
+	if stepDelay <= 0 {
+		stepDelay = 80 * time.Millisecond
+	}
+	if verifyDelay <= 0 {
+		verifyDelay = 120 * time.Millisecond
 	}
 
 	normalized := normalizeProcessNames(processNames)
@@ -167,7 +316,7 @@ func focusQobuzWindow(processNames []string, timeout, poll time.Duration) error 
 	var lastErr error
 
 	for {
-		focused, err := focusAnyQobuzWindow(normalized)
+		focused, err := focusAnyQobuzWindow(normalized, stepDelay, verifyDelay)
 		if err == nil && focused {
 			return nil
 		}
@@ -218,9 +367,15 @@ func waitForQobuzInputReady(processNames []string, timeout, poll time.Duration) 
 	}
 }
 
-func focusAnyQobuzWindow(processNames []string) (bool, error) {
+func focusAnyQobuzWindow(processNames []string, stepDelay, verifyDelay time.Duration) (bool, error) {
 	if len(processNames) == 0 {
 		processNames = []string{"Qobuz"}
+	}
+	if stepDelay <= 0 {
+		stepDelay = 80 * time.Millisecond
+	}
+	if verifyDelay <= 0 {
+		verifyDelay = 120 * time.Millisecond
 	}
 
 	quoted := make([]string, 0, len(processNames))
@@ -247,19 +402,19 @@ if ($null -eq $candidates -or $candidates.Count -eq 0) { exit 0 }
 foreach ($proc in $candidates) {
   $hwnd = $proc.MainWindowHandle
   [Win32.User32]::ShowWindowAsync($hwnd, 9) | Out-Null
-  Start-Sleep -Milliseconds 80
+	Start-Sleep -Milliseconds %d
   [void]$shell.AppActivate($proc.Id)
-  Start-Sleep -Milliseconds 80
+	Start-Sleep -Milliseconds %d
   $shell.SendKeys('%%')
-  Start-Sleep -Milliseconds 80
+	Start-Sleep -Milliseconds %d
   [Win32.User32]::SetForegroundWindow($hwnd) | Out-Null
-  Start-Sleep -Milliseconds 120
+	Start-Sleep -Milliseconds %d
   if ([Win32.User32]::GetForegroundWindow() -eq $hwnd) {
     Write-Output '1'
     exit 0
   }
 }
-`, strings.Join(quoted, ","))
+`, strings.Join(quoted, ","), stepDelay.Milliseconds(), stepDelay.Milliseconds(), stepDelay.Milliseconds(), verifyDelay.Milliseconds())
 
 	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", psScript)
 	output, err := cmd.CombinedOutput()
@@ -328,6 +483,279 @@ foreach ($proc in $candidates) {
 	}
 
 	return strings.TrimSpace(string(output)) == "1", nil
+}
+
+func waitForQobuzPlaybackStart(processNames []string, baseline qobuzPlaybackSnapshot, baselineTitles []string, timeout, poll time.Duration) (qobuzPlaybackSnapshot, []string, error) {
+	if timeout <= 0 {
+		timeout = 6 * time.Second
+	}
+	if poll <= 0 {
+		poll = 250 * time.Millisecond
+	}
+
+	deadline := time.Now().Add(timeout)
+	lastSeen := baseline
+	lastTitles := append([]string(nil), baselineTitles...)
+	var lastErr error
+
+	fmt.Printf("\twaitForQobuzPlaybackStart. t=%f, p=%d", timeout.Seconds(), poll.Milliseconds())
+	for {
+		fmt.Printf("\tchecking...\n")
+		snapshot, err := getQobuzPlaybackSnapshot(processNames)
+		if err == nil {
+			if snapshot != lastSeen {
+				fmt.Printf("Qobuz playback observed during readiness check: status=%q title=%q positionMs=%d appId=%q\n", snapshot.Status, snapshot.Title, snapshot.PositionMs, snapshot.AppID)
+				lastSeen = snapshot
+			}
+
+			if didPlaybackStartAfterKeypress(baseline, snapshot) {
+				return snapshot, lastTitles, nil
+			}
+		} else {
+			lastErr = err
+		}
+
+		titles, titleErr := getAnyQobuzWindowTitles(processNames)
+		if titleErr == nil {
+			if !sameStringSlice(titles, lastTitles) {
+				fmt.Printf("Qobuz window titles observed during readiness check: %q\n", titles)
+				lastTitles = append([]string(nil), titles...)
+			}
+			if didWindowTitlesIndicatePlaybackStart(baselineTitles, titles) {
+				return snapshot, titles, nil
+			}
+		} else if lastErr == nil {
+			lastErr = titleErr
+		}
+
+		if time.Now().After(deadline) {
+			if lastErr != nil {
+				return qobuzPlaybackSnapshot{}, nil, fmt.Errorf("timeout after %s waiting for playback start (baselineStatus=%q baselineTitle=%q baselinePositionMs=%d baselineWindowTitles=%q lastStatus=%q lastTitle=%q lastPositionMs=%d lastWindowTitles=%q last error: %v)", timeout, baseline.Status, baseline.Title, baseline.PositionMs, baselineTitles, lastSeen.Status, lastSeen.Title, lastSeen.PositionMs, lastTitles, lastErr)
+			}
+			return qobuzPlaybackSnapshot{}, nil, fmt.Errorf("timeout after %s waiting for playback start (baselineStatus=%q baselineTitle=%q baselinePositionMs=%d baselineWindowTitles=%q lastStatus=%q lastTitle=%q lastPositionMs=%d lastWindowTitles=%q)", timeout, baseline.Status, baseline.Title, baseline.PositionMs, baselineTitles, lastSeen.Status, lastSeen.Title, lastSeen.PositionMs, lastTitles)
+		}
+
+		time.Sleep(poll)
+	}
+}
+
+func didPlaybackStartAfterKeypress(before, after qobuzPlaybackSnapshot) bool {
+	if strings.EqualFold(after.Status, "Playing") && !strings.EqualFold(before.Status, "Playing") {
+		return true
+	}
+
+	if before.Title != "" && after.Title != "" && before.Title != after.Title {
+		return true
+	}
+
+	if strings.EqualFold(after.Status, "Playing") && after.PositionMs >= before.PositionMs+500 {
+		return true
+	}
+
+	return false
+}
+
+func didWindowTitlesIndicatePlaybackStart(before, after []string) bool {
+	beforeSig := normalizeWindowTitleSignature(before)
+	afterSig := normalizeWindowTitleSignature(after)
+	if afterSig == "" {
+		return false
+	}
+	return afterSig != beforeSig
+}
+
+func doesAnyWindowTitleIndicatePlaying(titles []string) bool {
+	for _, title := range titles {
+		trimmed := strings.TrimSpace(title)
+		if trimmed == "" {
+			continue
+		}
+
+		if strings.HasPrefix(trimmed, "▶") || strings.HasPrefix(trimmed, "►") || strings.HasPrefix(trimmed, "⏵") {
+			return true
+		}
+
+		normalized := strings.ToLower(trimmed)
+		if strings.Contains(normalized, " playing") || strings.HasPrefix(normalized, "playing") {
+			return true
+		}
+	}
+
+	return false
+}
+
+func normalizeWindowTitleSignature(titles []string) string {
+	if len(titles) == 0 {
+		return ""
+	}
+
+	filtered := make([]string, 0, len(titles))
+	for _, title := range titles {
+		trimmed := strings.TrimSpace(title)
+		if trimmed == "" {
+			continue
+		}
+		filtered = append(filtered, trimmed)
+	}
+
+	if len(filtered) == 0 {
+		return ""
+	}
+
+	sort.Strings(filtered)
+	return strings.Join(filtered, "|")
+}
+
+func sameStringSlice(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func getAnyQobuzWindowTitles(processNames []string) ([]string, error) {
+	if len(processNames) == 0 {
+		processNames = []string{"Qobuz"}
+	}
+
+	normalized := normalizeProcessNames(processNames)
+	quoted := make([]string, 0, len(normalized))
+	for _, name := range normalized {
+		quoted = append(quoted, fmt.Sprintf("'%s'", escapePowerShellSingleQuotes(name)))
+	}
+
+	psScript := fmt.Sprintf(`$names = @(%s)
+$titles = Get-Process -ErrorAction SilentlyContinue |
+  Where-Object { $names -contains $_.ProcessName -and $_.MainWindowHandle -ne 0 } |
+  Sort-Object StartTime -Descending |
+  Select-Object -ExpandProperty MainWindowTitle
+
+if ($null -eq $titles) { exit 0 }
+$titles | ConvertTo-Json -Compress
+`, strings.Join(quoted, ","))
+
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", psScript)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("%v output=%s", err, strings.TrimSpace(string(output)))
+	}
+
+	raw := strings.TrimSpace(string(output))
+	if raw == "" {
+		return []string{}, nil
+	}
+
+	var list []string
+	if err := json.Unmarshal([]byte(raw), &list); err == nil {
+		return list, nil
+	}
+
+	var single string
+	if err := json.Unmarshal([]byte(raw), &single); err == nil {
+		return []string{single}, nil
+	}
+
+	return nil, fmt.Errorf("decode window titles output=%q", raw)
+}
+
+func getQobuzPlaybackSnapshot(processNames []string) (qobuzPlaybackSnapshot, error) {
+	if len(processNames) == 0 {
+		processNames = []string{"Qobuz"}
+	}
+
+	normalized := normalizeProcessNames(processNames)
+
+	quoted := make([]string, 0, len(processNames))
+	for _, name := range normalized {
+		quoted = append(quoted, fmt.Sprintf("'%s'", escapePowerShellSingleQuotes(name)))
+	}
+
+	psScript := fmt.Sprintf(`$names = @(%s)
+$ErrorActionPreference = 'SilentlyContinue'
+Add-Type -AssemblyName System.Runtime.WindowsRuntime | Out-Null
+$null = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType=WindowsRuntime]
+$mgr = [System.WindowsRuntimeSystemExtensions]::AsTask([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()).Result
+if ($null -eq $mgr) { exit 0 }
+
+$sessions = $mgr.GetSessions()
+$selected = $null
+if ($null -ne $sessions) {
+  foreach ($session in $sessions) {
+    $id = ([string]$session.SourceAppUserModelId).ToLowerInvariant()
+    foreach ($name in $names) {
+      if ($id -like ("*" + $name.ToLowerInvariant() + "*")) {
+        $selected = $session
+        break
+      }
+    }
+    if ($null -ne $selected) { break }
+  }
+}
+
+if ($null -eq $selected) {
+  foreach ($session in $sessions) {
+    $id = ([string]$session.SourceAppUserModelId).ToLowerInvariant()
+    if ($id -like '*qobuz*') {
+      $selected = $session
+      break
+    }
+  }
+}
+
+if ($null -eq $selected) {
+  $selected = $mgr.GetCurrentSession()
+}
+
+if ($null -eq $selected) { exit 0 }
+
+$playback = $selected.GetPlaybackInfo()
+$status = ''
+if ($null -ne $playback) {
+  $status = [string]$playback.PlaybackStatus
+}
+
+$timeline = $selected.GetTimelineProperties()
+$positionMs = 0
+if ($null -ne $timeline) {
+  $positionMs = [int64]$timeline.Position.TotalMilliseconds
+}
+
+$media = [System.WindowsRuntimeSystemExtensions]::AsTask($selected.TryGetMediaPropertiesAsync()).Result
+$title = ''
+if ($null -ne $media) {
+  $title = [string]$media.Title
+}
+
+[PSCustomObject]@{
+  status = $status
+  title = $title
+  positionMs = $positionMs
+  appId = [string]$selected.SourceAppUserModelId
+} | ConvertTo-Json -Compress
+`, strings.Join(quoted, ","))
+
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", psScript)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return qobuzPlaybackSnapshot{}, fmt.Errorf("%v output=%s", err, strings.TrimSpace(string(output)))
+	}
+
+	raw := strings.TrimSpace(string(output))
+	if raw == "" {
+		return qobuzPlaybackSnapshot{}, nil
+	}
+
+	var snapshot qobuzPlaybackSnapshot
+	if err := json.Unmarshal([]byte(raw), &snapshot); err != nil {
+		return qobuzPlaybackSnapshot{}, fmt.Errorf("decode playback snapshot output=%q: %w", raw, err)
+	}
+
+	return snapshot, nil
 }
 
 func findQobuzShortcutPath() (string, error) {
@@ -410,20 +838,28 @@ func sendVKPlayPause() error {
 	return nil
 }
 
-func sendVKCtrlRightArrow() error {
+func sendVKCtrlRightArrow(shortDelay, longDelay time.Duration) error {
+	if shortDelay <= 0 {
+		shortDelay = 20 * time.Millisecond
+	}
+	if longDelay <= 0 {
+		longDelay = 40 * time.Millisecond
+	}
+
 	procKeybdEvent.Call(uintptr(vkControl), 0, 0, 0)
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(shortDelay)
 	procKeybdEvent.Call(uintptr(vkRightArrow), 0, 0, 0)
-	time.Sleep(40 * time.Millisecond)
+	time.Sleep(longDelay)
 	procKeybdEvent.Call(uintptr(vkRightArrow), 0, uintptr(keyeventfKeyUp), 0)
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(shortDelay)
 	procKeybdEvent.Call(uintptr(vkControl), 0, uintptr(keyeventfKeyUp), 0)
 	return nil
 }
 
 func sendVirtualKey(vk byte) {
+	const keyReleaseDelay = 40 * time.Millisecond
 	procKeybdEvent.Call(uintptr(vk), 0, 0, 0)
-	time.Sleep(40 * time.Millisecond)
+	time.Sleep(keyReleaseDelay)
 	procKeybdEvent.Call(uintptr(vk), 0, uintptr(keyeventfKeyUp), 0)
 }
 
