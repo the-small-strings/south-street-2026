@@ -3,9 +3,9 @@ help: ## show this help
 	| awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%s\033[0m|%s\n", $$1, $$2}' \
 	| column -t -s '|'
 
-# REVEAL_DELAY_MS ?= 5000
+REVEAL_DELAY_MS ?= 5000
 # REVEAL_DELAY_MS ?= 10000
-REVEAL_DELAY_MS ?= 0
+# REVEAL_DELAY_MS ?= 0
 
 run-web: ## run the web application
 #	# Override the API URL to point to localhost:3000 for local development

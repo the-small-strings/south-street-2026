@@ -24,37 +24,27 @@ import (
 )
 
 type config struct {
-	APIBaseURL            string
-	SocketURL             string
-	FadeDownDuration      time.Duration
-	FadeTarget            float64
-	CooldownDuration      time.Duration
-	ReconnectDelay        time.Duration
-	HTTPTimeout           time.Duration
-	ProcessNames          []string
-	KillSettleDuration    time.Duration
-	QobuzLaunchTarget     string
-	QobuzRestartOnEnd     bool
-	QobuzWindowTimeout    time.Duration
-	QobuzFocusTimeout     time.Duration
-	QobuzWindowPoll       time.Duration
-	QobuzPlaybackTimeout  time.Duration
-	QobuzCheckTimeout     time.Duration
-	QobuzPlaybackAttempts int
-	QobuzRetryMinDelay    time.Duration
-	QobuzFocusStepDelay   time.Duration
-	QobuzFocusVerifyDelay time.Duration
-	QobuzKeyShortDelay    time.Duration
-	QobuzKeyLongDelay     time.Duration
+	APIBaseURL           string
+	SocketURL            string
+	FadeDownDuration     time.Duration
+	FadeTarget           float64
+	CooldownDuration     time.Duration
+	ReconnectDelay       time.Duration
+	HTTPTimeout          time.Duration
+	ProcessNames         []string
+	KillSettleDuration   time.Duration
+	QobuzLaunchTarget    string
+	QobuzRestartOnEnd    bool
+	QobuzWindowTimeout   time.Duration
+	QobuzFocusTimeout    time.Duration
+	QobuzWindowPoll      time.Duration
+	QobuzPlaybackTimeout time.Duration
 }
 
 type gigState struct {
 	CurrentPage struct {
 		Type string `json:"type"`
 	} `json:"currentPage"`
-	NextPage *struct {
-		Type string `json:"type"`
-	} `json:"nextPage"`
 	PageIndex int `json:"pageIndex"`
 }
 
@@ -70,8 +60,6 @@ type triggerRunner struct {
 	running          bool
 	setBreakRunning  bool
 	endScreenRunning bool
-	setBreakPreload  bool
-	endScreenPreload bool
 	lastRun          time.Time
 	prev             *gigState
 }
@@ -97,10 +85,7 @@ func main() {
 	log.Printf("qobuz window timeout: %s", cfg.QobuzWindowTimeout)
 	log.Printf("qobuz focus timeout: %s", cfg.QobuzFocusTimeout)
 	log.Printf("qobuz playback verify timeout: %s", cfg.QobuzPlaybackTimeout)
-	log.Printf("qobuz check timeout: %s", cfg.QobuzCheckTimeout)
 	log.Printf("qobuz poll interval: %s", cfg.QobuzWindowPoll)
-	log.Printf("qobuz playback attempts: %d", cfg.QobuzPlaybackAttempts)
-	log.Printf("qobuz playback retry minimum delay: %s", cfg.QobuzRetryMinDelay)
 
 	runner := &triggerRunner{
 		cfg: cfg,
@@ -195,14 +180,7 @@ func loadConfig() (config, error) {
 	windowWaitSeconds := getEnvFloat("QOBUZ_WINDOW_WAIT_SECONDS", 15)
 	focusTimeoutSeconds := getEnvFloat("QOBUZ_FOCUS_TIMEOUT_SECONDS", 10)
 	playbackTimeoutSeconds := getEnvFloat("QOBUZ_PLAYBACK_VERIFY_TIMEOUT_SECONDS", getEnvFloat("QOBUZ_TITLE_CHANGE_TIMEOUT_SECONDS", 6))
-	checkTimeoutSeconds := getEnvFloat("QOBUZ_CHECK_TIMEOUT_SECONDS", 8)
 	windowPollMs := getEnvInt("QOBUZ_WINDOW_POLL_MS", 250)
-	playbackAttempts := getEnvInt("QOBUZ_PLAYBACK_START_MAX_ATTEMPTS", 8)
-	retryMinDelayMs := getEnvInt("QOBUZ_PLAYBACK_RETRY_MIN_DELAY_MS", 800)
-	focusStepDelayMs := getEnvInt("QOBUZ_FOCUS_STEP_DELAY_MS", 80)
-	focusVerifyDelayMs := getEnvInt("QOBUZ_FOCUS_VERIFY_DELAY_MS", 120)
-	keyShortDelayMs := getEnvInt("QOBUZ_KEY_SHORT_DELAY_MS", 20)
-	keyLongDelayMs := getEnvInt("QOBUZ_KEY_LONG_DELAY_MS", 40)
 	restartOnEnd := getEnvBool("QOBUZ_RESTART_ON_END", true)
 
 	processNames := parseProcessList(getEnv("QOBUZ_PROCESS_NAMES", "Qobuz.exe"))
@@ -223,51 +201,23 @@ func loadConfig() (config, error) {
 	if playbackTimeoutSeconds <= 0 {
 		playbackTimeoutSeconds = 6
 	}
-	if checkTimeoutSeconds <= 0 {
-		checkTimeoutSeconds = 8
-	}
-	if playbackAttempts <= 0 {
-		playbackAttempts = 8
-	}
-	if retryMinDelayMs <= 0 {
-		retryMinDelayMs = 800
-	}
-	if focusStepDelayMs <= 0 {
-		focusStepDelayMs = 80
-	}
-	if focusVerifyDelayMs <= 0 {
-		focusVerifyDelayMs = 120
-	}
-	if keyShortDelayMs <= 0 {
-		keyShortDelayMs = 20
-	}
-	if keyLongDelayMs <= 0 {
-		keyLongDelayMs = 40
-	}
 
 	return config{
-		APIBaseURL:            strings.TrimRight(apiBase, "/"),
-		SocketURL:             socketURL,
-		FadeDownDuration:      time.Duration(fadeSeconds * float64(time.Second)),
-		FadeTarget:            fadeTarget,
-		CooldownDuration:      time.Duration(cooldownSeconds * float64(time.Second)),
-		ReconnectDelay:        time.Duration(reconnectSeconds * float64(time.Second)),
-		HTTPTimeout:           time.Duration(httpTimeoutSeconds * float64(time.Second)),
-		ProcessNames:          processNames,
-		KillSettleDuration:    time.Duration(killSettleMs) * time.Millisecond,
-		QobuzLaunchTarget:     qobuzLaunchTarget,
-		QobuzRestartOnEnd:     restartOnEnd,
-		QobuzWindowTimeout:    time.Duration(windowWaitSeconds * float64(time.Second)),
-		QobuzFocusTimeout:     time.Duration(focusTimeoutSeconds * float64(time.Second)),
-		QobuzWindowPoll:       time.Duration(windowPollMs) * time.Millisecond,
-		QobuzPlaybackTimeout:  time.Duration(playbackTimeoutSeconds * float64(time.Second)),
-		QobuzCheckTimeout:     time.Duration(checkTimeoutSeconds * float64(time.Second)),
-		QobuzPlaybackAttempts: playbackAttempts,
-		QobuzRetryMinDelay:    time.Duration(retryMinDelayMs) * time.Millisecond,
-		QobuzFocusStepDelay:   time.Duration(focusStepDelayMs) * time.Millisecond,
-		QobuzFocusVerifyDelay: time.Duration(focusVerifyDelayMs) * time.Millisecond,
-		QobuzKeyShortDelay:    time.Duration(keyShortDelayMs) * time.Millisecond,
-		QobuzKeyLongDelay:     time.Duration(keyLongDelayMs) * time.Millisecond,
+		APIBaseURL:           strings.TrimRight(apiBase, "/"),
+		SocketURL:            socketURL,
+		FadeDownDuration:     time.Duration(fadeSeconds * float64(time.Second)),
+		FadeTarget:           fadeTarget,
+		CooldownDuration:     time.Duration(cooldownSeconds * float64(time.Second)),
+		ReconnectDelay:       time.Duration(reconnectSeconds * float64(time.Second)),
+		HTTPTimeout:          time.Duration(httpTimeoutSeconds * float64(time.Second)),
+		ProcessNames:         processNames,
+		KillSettleDuration:   time.Duration(killSettleMs) * time.Millisecond,
+		QobuzLaunchTarget:    qobuzLaunchTarget,
+		QobuzRestartOnEnd:    restartOnEnd,
+		QobuzWindowTimeout:   time.Duration(windowWaitSeconds * float64(time.Second)),
+		QobuzFocusTimeout:    time.Duration(focusTimeoutSeconds * float64(time.Second)),
+		QobuzWindowPoll:      time.Duration(windowPollMs) * time.Millisecond,
+		QobuzPlaybackTimeout: time.Duration(playbackTimeoutSeconds * float64(time.Second)),
 	}, nil
 }
 
@@ -362,12 +312,6 @@ func (r *triggerRunner) onStateUpdate(state gigState) {
 	}
 
 	transition := stateTransition{from: *prev, to: state}
-	if shouldTriggerSetBreakPreload(transition) {
-		r.tryRunSetBreakPreload(transition)
-	}
-	if shouldTriggerEndScreenPreload(transition) {
-		r.tryRunEndScreenPreload(transition)
-	}
 	if shouldTriggerSetBreakLaunch(transition) {
 		r.tryRunSetBreakLaunch(transition)
 	}
@@ -388,20 +332,6 @@ func (r *triggerRunner) onStateUpdate(state gigState) {
 
 func shouldTriggerSetBreakLaunch(tr stateTransition) bool {
 	return tr.to.CurrentPage.Type == "setBreak" && tr.to.PageIndex > tr.from.PageIndex
-}
-
-func shouldTriggerSetBreakPreload(tr stateTransition) bool {
-	return tr.to.CurrentPage.Type == "song" &&
-		tr.to.NextPage != nil &&
-		tr.to.NextPage.Type == "setBreak" &&
-		tr.to.PageIndex > tr.from.PageIndex
-}
-
-func shouldTriggerEndScreenPreload(tr stateTransition) bool {
-	return tr.to.CurrentPage.Type == "song" &&
-		tr.to.NextPage != nil &&
-		tr.to.NextPage.Type == "end" &&
-		tr.to.PageIndex > tr.from.PageIndex
 }
 
 func shouldTriggerEndScreenLaunch(tr stateTransition) bool {
@@ -474,63 +404,11 @@ func (r *triggerRunner) tryRunSetBreakLaunch(tr stateTransition) {
 		}()
 
 		log.Printf("detected set break transition %s(%d) -> %s(%d)", tr.from.CurrentPage.Type, tr.from.PageIndex, tr.to.CurrentPage.Type, tr.to.PageIndex)
-		if err := playQobuz(r.cfg); err != nil {
-			log.Printf("set break qobuz play failed: %v", err)
+		if err := launchQobuzAndPlay(r.cfg); err != nil {
+			log.Printf("set break qobuz launch/play failed: %v", err)
 			return
 		}
-		log.Printf("set break qobuz play completed")
-	}()
-}
-
-func (r *triggerRunner) tryRunSetBreakPreload(tr stateTransition) {
-	r.mu.Lock()
-	if r.setBreakPreload {
-		r.mu.Unlock()
-		log.Printf("set break prelaunch already running; ignoring duplicate trigger")
-		return
-	}
-	r.setBreakPreload = true
-	r.mu.Unlock()
-
-	go func() {
-		defer func() {
-			r.mu.Lock()
-			r.setBreakPreload = false
-			r.mu.Unlock()
-		}()
-
-		log.Printf("detected pre-set-break song transition %s(%d) -> %s(%d)", tr.from.CurrentPage.Type, tr.from.PageIndex, tr.to.CurrentPage.Type, tr.to.PageIndex)
-		if err := prelaunchQobuz(r.cfg); err != nil {
-			log.Printf("set break qobuz prelaunch failed: %v", err)
-			return
-		}
-		log.Printf("set break qobuz prelaunch completed")
-	}()
-}
-
-func (r *triggerRunner) tryRunEndScreenPreload(tr stateTransition) {
-	r.mu.Lock()
-	if r.endScreenPreload {
-		r.mu.Unlock()
-		log.Printf("end screen prelaunch already running; ignoring duplicate trigger")
-		return
-	}
-	r.endScreenPreload = true
-	r.mu.Unlock()
-
-	go func() {
-		defer func() {
-			r.mu.Lock()
-			r.endScreenPreload = false
-			r.mu.Unlock()
-		}()
-
-		log.Printf("detected pre-end-screen song transition %s(%d) -> %s(%d)", tr.from.CurrentPage.Type, tr.from.PageIndex, tr.to.CurrentPage.Type, tr.to.PageIndex)
-		if err := prelaunchQobuz(r.cfg); err != nil {
-			log.Printf("end screen qobuz prelaunch failed: %v", err)
-			return
-		}
-		log.Printf("end screen qobuz prelaunch completed")
+		log.Printf("set break qobuz launch/play completed")
 	}()
 }
 
@@ -552,20 +430,11 @@ func (r *triggerRunner) tryRunEndScreenLaunch(tr stateTransition) {
 		}()
 
 		log.Printf("detected end screen transition %s(%d) -> %s(%d)", tr.from.CurrentPage.Type, tr.from.PageIndex, tr.to.CurrentPage.Type, tr.to.PageIndex)
-		if err := playQobuz(r.cfg); err != nil {
-			log.Printf("end screen qobuz play failed: %v", err)
-			if r.cfg.QobuzRestartOnEnd {
-				log.Printf("attempting restart fallback for end screen qobuz playback")
-				if restartErr := restartQobuzAndPlay(r.cfg); restartErr != nil {
-					log.Printf("end screen qobuz restart fallback failed: %v", restartErr)
-					return
-				}
-				log.Printf("end screen qobuz restart fallback completed")
-				return
-			}
+		if err := restartQobuzAndPlay(r.cfg); err != nil {
+			log.Printf("end screen qobuz restart/play failed: %v", err)
 			return
 		}
-		log.Printf("end screen qobuz play completed")
+		log.Printf("end screen qobuz restart/play completed")
 	}()
 }
 
