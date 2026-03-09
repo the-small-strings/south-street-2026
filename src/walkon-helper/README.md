@@ -2,6 +2,9 @@
 
 Windows helper app that listens to API `gameStateUpdate` events and triggers automation on key page transitions.
 
+> NOTE: this was a last-minute addition to the setup and was developed in a bit of a hurry. The implementation shells out to PowerShell for window control as this worked. There were attempts to move to direct Windows API calls, but focussing the window was not working.
+
+
 ## Behavior
 
 On `welcome -> getReady` and `setBreak -> getReadyAgain` transitions:
