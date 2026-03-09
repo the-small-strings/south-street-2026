@@ -1,0 +1,7 @@
+__pycache__
+
+bingo_cards.json
+*.pdf
+
+summary_*.txt
+
