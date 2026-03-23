@@ -215,7 +215,7 @@ HTML_TEMPLATE = """
             return `
             <li class="pin-item">
                 <div class="pin-info">
-                    <span class="pin-number">Pin ${pin.number}${pin.name ? ` <span class="pin-name">(${pin.name})</span>` : ''}</span>
+                    <span class="pin-number">${pin.name || 'Pin ' + pin.number}${pin.name ? ` <span class="pin-name">[${pin.number}]</span>` : ''}</span>
                     <span class="pin-function ${pin.function}">${pin.function}</span>
                     <span class="pin-value ${isHigh ? 'high' : 'low'}" id="state-${pin.number}">
                         ${isHigh ? 'HIGH' : 'LOW'}
