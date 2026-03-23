@@ -260,17 +260,27 @@ def get_pins():
     
     # MockFactory stores pins in pins dict
     if hasattr(pin_factory, 'pins'):
-        for pin_key, pin in pin_factory.pins.items():
-            # pin.number is the actual GPIO number
+        factory_pins = {pin.number: pin for pin in pin_factory.pins.values()}
+
+        # Add pins in pin_names_map order first (preserve the order the caller set the pins)
+        for pin_number in pin_names_map:
+            if pin_number in factory_pins:
+                pin = factory_pins.pop(pin_number)
+                pins.append({
+                    'number': pin.number,
+                    'state': pin.state,
+                    'function': pin.function,
+                    'name': pin_names_map.get(pin.number)
+                })
+
+        # Then any remaining pins not in the map, sorted by number
+        for pin in sorted(factory_pins.values(), key=lambda p: p.number):
             pins.append({
                 'number': pin.number,
                 'state': pin.state,
-                'function': pin.function,  # 'input' or 'output'
-                'name': pin_names_map.get(pin.number)  # Custom name if set
+                'function': pin.function,
+                'name': None
             })
-    
-    # Sort by pin number
-    pins.sort(key=lambda p: p['number'])
     return jsonify(pins)
 
 
